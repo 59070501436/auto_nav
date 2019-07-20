@@ -1,0 +1,194 @@
+#!/usr/bin/env python
+# license removed for brevity
+import rospy
+from std_msgs.msg import String
+import numpy as np
+import pandas as pd
+import cv2
+import os
+import glob
+import matplotlib.pyplot as plt
+import pickle
+
+roi_x = 0
+roi_y = 0
+max_value_H = 360/2
+max_value = 255
+low_H = 0
+low_S = 0
+low_V = 0
+high_H = max_value_H
+high_S = max_value
+high_V = 145
+
+left_a, left_b, left_c = [],[],[]
+right_a, right_b, right_c = [],[],[]
+
+def sliding_window(img, nwindows=9, margin=150, minpix = 1, draw_windows=True):
+    global left_a, left_b, left_c,right_a, right_b, right_c
+    left_fit_= np.empty(3)
+    right_fit_ = np.empty(3)
+    out_img = np.dstack((img, img, img))*255
+
+    histogram = cv2.calcHist([img],[0],None,[256],[0,256])
+    # find peaks of left and right halves
+    midpoint = int(histogram.shape[0]/2)
+    leftx_base = np.argmax(histogram[:midpoint])
+    rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+    plt.plot(histogram)
+    #plt.xlim([0,256])
+    plt.show()
+
+    # Set height of windows
+    window_height = np.int(img.shape[0]/nwindows)
+    # Identify the x and y positions of all nonzero pixels in the image
+    nonzero = img.nonzero()
+    nonzeroy = np.array(nonzero[0])
+    nonzerox = np.array(nonzero[1])
+    # Current positions to be updated for each window
+    leftx_current = leftx_base
+    rightx_current = rightx_base
+    print leftx_current, rightx_current
+
+    # Create empty lists to receive left and right lane pixel indices
+    left_lane_inds = []
+    right_lane_inds = []
+
+    # Step through the windows one by one
+    for window in range(nwindows):
+        # Identify window boundaries in x and y (and right and left)
+        win_y_low = img.shape[0] - (window+1)*window_height
+        win_y_high = img.shape[0] - window*window_height
+        win_xleft_low = leftx_current - margin
+        win_xleft_high = leftx_current + margin
+        win_xright_low = rightx_current - margin
+        win_xright_high = rightx_current + margin
+        # Draw the windows on the visualization image
+        if draw_windows == True:
+            cv2.rectangle(out_img,(win_xleft_low,win_y_low),(win_xleft_high,win_y_high),
+            (100,255,255), 3)
+            cv2.rectangle(out_img,(win_xright_low,win_y_low),(win_xright_high,win_y_high),
+            (100,255,255), 3)
+        # Identify the nonzero pixels in x and y within the window
+        good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
+        (nonzerox >= win_xleft_low) &  (nonzerox < win_xleft_high)).nonzero()[0]
+        good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
+        (nonzerox >= win_xright_low) &  (nonzerox < win_xright_high)).nonzero()[0]
+        # Append these indices to the lists
+        left_lane_inds.append(good_left_inds)
+        right_lane_inds.append(good_right_inds)
+        # If you found > minpix pixels, recenter next window on their mean position
+        if len(good_left_inds) > minpix:
+            leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
+        if len(good_right_inds) > minpix:
+            rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
+
+
+#        if len(good_right_inds) > minpix:
+#            rightx_current = np.int(np.mean([leftx_current +900, np.mean(nonzerox[good_right_inds])]))
+#        elif len(good_left_inds) > minpix:
+#            rightx_current = np.int(np.mean([np.mean(nonzerox[good_left_inds]) +900, rightx_current]))
+#        if len(good_left_inds) > minpix:
+#            leftx_current = np.int(np.mean([rightx_current -900, np.mean(nonzerox[good_left_inds])]))
+#        elif len(good_right_inds) > minpix:
+#            leftx_current = np.int(np.mean([np.mean(nonzerox[good_right_inds]) -900, leftx_current]))
+
+
+    # Concatenate the arrays of indices
+    left_lane_inds = np.concatenate(left_lane_inds)
+    right_lane_inds = np.concatenate(right_lane_inds)
+
+    # Extract left and right line pixel positions
+    leftx = nonzerox[left_lane_inds]
+    lefty = nonzeroy[left_lane_inds]
+    rightx = nonzerox[right_lane_inds]
+    righty = nonzeroy[right_lane_inds]
+
+    # Fit a second order polynomial to
+    #left_fit = np.polyfit(lefty, leftx, 2)
+    #right_fit = np.polyfit(righty, rightx, 2)
+
+    #left_a.append(left_fit[0])
+    #left_b.append(left_fit[1])
+    #left_c.append(left_fit[2])
+
+    #right_a.append(right_fit[0])
+    #right_b.append(right_fit[1])
+    #right_c.append(right_fit[2])
+
+    #left_fit_[0] = np.mean(left_a[-10:])
+    #left_fit_[1] = np.mean(left_b[-10:])
+    #left_fit_[2] = np.mean(left_c[-10:])
+
+    #right_fit_[0] = np.mean(right_a[-10:])
+    #right_fit_[1] = np.mean(right_b[-10:])
+    #right_fit_[2] = np.mean(right_c[-10:])
+
+    # Generate x and y values for plotting
+    #ploty = np.linspace(0, img.shape[0]-1, img.shape[0] )
+    #left_fitx = left_fit_[0]*ploty**2 + left_fit_[1]*ploty + left_fit_[2]
+    #right_fitx = right_fit_[0]*ploty**2 + right_fit_[1]*ploty + right_fit_[2]
+
+    out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 100]
+    out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 100, 255]
+
+    #return out_img, (left_fitx, right_fitx), (left_fit_, right_fit_), ploty
+    return out_img
+
+def perspective_warp(img,
+                     dst_size=(1920,1080),
+                     src=np.float32([(550.0,50.0),(1305,50),(1295,1023),(450,1034)]), # Choose the four vertices
+                     dst=np.float32([(0,0), (1, 0), (1,1), (0,1)])):
+
+    # For destination points, I'm arbitrarily choosing some points to be
+    # a nice fit for displaying our warped result
+    # again, not exact, but close enough for our purposes
+    dst = dst * np.float32(dst_size)
+
+    # Given src and dst points, calculate the perspective transform matrix
+    M = cv2.getPerspectiveTransform(src, dst)
+    # Warp the image using OpenCV warpPerspective()
+    warped = cv2.warpPerspective(img, M, dst_size)
+    return warped
+
+if __name__ == '__main__':
+  rospy.init_node('curved_lane_detector', anonymous=True)
+  rospy.spin()
+
+  # Load an color image in grayscale
+  img = cv2.imread('/home/saga/curved_lane.jpg')
+
+  # Convert BGR to HSV
+  hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+  height, width = hsv.shape[:2]
+
+  # Getting ROI
+  Roi = hsv[roi_y:height-(roi_y+1), roi_x:width-(roi_x+1)]
+
+  # define range of blue color in HSV
+  lower_t = np.array([low_H,low_S,low_V])
+  upper_t = np.array([high_H,high_S,high_V])
+
+  # Detect the object based on HSV Range Values v_min 71.65 v_max 179.0,242.25,200.60
+  mask = cv2.inRange(hsv, lower_t, upper_t)
+
+  #element = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))  # needed for morphological transforms (erodation, dilation)
+  kernel = np.ones((7,7),np.uint8)
+  eroded = cv2.erode(mask, kernel, iterations = 1) # eroding + dilating = opening
+  wscale = cv2.dilate(eroded, kernel, iterations = 1)
+  ret,thresh = cv2.threshold(wscale,128,255,cv2.THRESH_BINARY_INV) # thresholding the image //THRESH_BINARY_INV
+
+  # Perspective warp
+  rheight, rwidth = thresh.shape[:2]
+  warped_img = perspective_warp(thresh,dst_size=(rheight,rwidth))
+
+  window_img = sliding_window(warped_img)
+
+  #print leftx_base, rightx_base
+  #plt.plot(hist)
+  #plt.xlim([0,256])
+  #plt.show()
+  cv2.imwrite('/home/saga/warped_img.jpg',warped_img)
+  #cv2.imshow('image',warped_img)
+  #cv2.waitKey(0)
+  #cv2.destroyAllWindows()
