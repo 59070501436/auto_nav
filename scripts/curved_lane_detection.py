@@ -24,20 +24,22 @@ high_V = 145
 left_a, left_b, left_c = [],[],[]
 right_a, right_b, right_c = [],[],[]
 
-def sliding_window(img, nwindows=9, margin=150, minpix = 1, draw_windows=True):
+def sliding_window(img, nwindows=9, margin=100, minpix = 1, draw_windows=True):
     global left_a, left_b, left_c,right_a, right_b, right_c
     left_fit_= np.empty(3)
     right_fit_ = np.empty(3)
     out_img = np.dstack((img, img, img))*255
 
-    histogram = cv2.calcHist([img],[0],None,[256],[0,256])
+    # Histrogram
+    histogram = np.sum(warped_img[img.shape[0]//2:,:], axis=0)
+    #plt.plot(histogram)
+    #plt.show()
+
     # find peaks of left and right halves
     midpoint = int(histogram.shape[0]/2)
     leftx_base = np.argmax(histogram[:midpoint])
     rightx_base = np.argmax(histogram[midpoint:]) + midpoint
-    plt.plot(histogram)
-    #plt.xlim([0,256])
-    plt.show()
+    # print leftx_base, rightx_base
 
     # Set height of windows
     window_height = np.int(img.shape[0]/nwindows)
@@ -48,7 +50,6 @@ def sliding_window(img, nwindows=9, margin=150, minpix = 1, draw_windows=True):
     # Current positions to be updated for each window
     leftx_current = leftx_base
     rightx_current = rightx_base
-    print leftx_current, rightx_current
 
     # Create empty lists to receive left and right lane pixel indices
     left_lane_inds = []
@@ -105,39 +106,38 @@ def sliding_window(img, nwindows=9, margin=150, minpix = 1, draw_windows=True):
     righty = nonzeroy[right_lane_inds]
 
     # Fit a second order polynomial to
-    #left_fit = np.polyfit(lefty, leftx, 2)
-    #right_fit = np.polyfit(righty, rightx, 2)
+    left_fit = np.polyfit(lefty, leftx, 2)
+    right_fit = np.polyfit(righty, rightx, 2)
 
-    #left_a.append(left_fit[0])
-    #left_b.append(left_fit[1])
-    #left_c.append(left_fit[2])
+    left_a.append(left_fit[0])
+    left_b.append(left_fit[1])
+    left_c.append(left_fit[2])
 
-    #right_a.append(right_fit[0])
-    #right_b.append(right_fit[1])
-    #right_c.append(right_fit[2])
+    right_a.append(right_fit[0])
+    right_b.append(right_fit[1])
+    right_c.append(right_fit[2])
 
-    #left_fit_[0] = np.mean(left_a[-10:])
-    #left_fit_[1] = np.mean(left_b[-10:])
-    #left_fit_[2] = np.mean(left_c[-10:])
+    left_fit_[0] = np.mean(left_a[-10:])
+    left_fit_[1] = np.mean(left_b[-10:])
+    left_fit_[2] = np.mean(left_c[-10:])
 
-    #right_fit_[0] = np.mean(right_a[-10:])
-    #right_fit_[1] = np.mean(right_b[-10:])
-    #right_fit_[2] = np.mean(right_c[-10:])
+    right_fit_[0] = np.mean(right_a[-10:])
+    right_fit_[1] = np.mean(right_b[-10:])
+    right_fit_[2] = np.mean(right_c[-10:])
 
     # Generate x and y values for plotting
-    #ploty = np.linspace(0, img.shape[0]-1, img.shape[0] )
-    #left_fitx = left_fit_[0]*ploty**2 + left_fit_[1]*ploty + left_fit_[2]
-    #right_fitx = right_fit_[0]*ploty**2 + right_fit_[1]*ploty + right_fit_[2]
+    ploty = np.linspace(0, img.shape[0]-1, img.shape[0] )
+    left_fitx = left_fit_[0]*ploty**2 + left_fit_[1]*ploty + left_fit_[2]
+    right_fitx = right_fit_[0]*ploty**2 + right_fit_[1]*ploty + right_fit_[2]
 
     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 100]
     out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 100, 255]
 
-    #return out_img, (left_fitx, right_fitx), (left_fit_, right_fit_), ploty
-    return out_img
+    return out_img, (left_fitx, right_fitx), (left_fit_, right_fit_), ploty
 
 def perspective_warp(img,
                      dst_size=(1920,1080),
-                     src=np.float32([(550.0,50.0),(1305,50),(1295,1023),(450,1034)]), # Choose the four vertices
+                     src=np.float32([(550.0,0.0),(1500,0),(1500,1023),(450,1034)]), # Choose the four vertices
                      dst=np.float32([(0,0), (1, 0), (1,1), (0,1)])):
 
     # For destination points, I'm arbitrarily choosing some points to be
@@ -150,6 +150,19 @@ def perspective_warp(img,
     # Warp the image using OpenCV warpPerspective()
     warped = cv2.warpPerspective(img, M, dst_size)
     return warped
+
+def draw_lanes(img, left_fit, right_fit):
+    ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
+    color_img = np.zeros_like(img)
+
+    left = np.array([np.transpose(np.vstack([left_fit, ploty]))])
+    right = np.array([np.flipud(np.transpose(np.vstack([right_fit, ploty])))])
+    points = np.hstack((left, right))
+
+    cv2.fillPoly(color_img, np.int_(points), (0,200,255))
+    inv_perspective = inv_perspective_warp(color_img)
+    inv_perspective = cv2.addWeighted(img, 1, inv_perspective, 0.7, 0)
+    return inv_perspective
 
 if __name__ == '__main__':
   rospy.init_node('curved_lane_detector', anonymous=True)
@@ -182,13 +195,18 @@ if __name__ == '__main__':
   rheight, rwidth = thresh.shape[:2]
   warped_img = perspective_warp(thresh,dst_size=(rheight,rwidth))
 
-  window_img = sliding_window(warped_img)
+  # Sliding Window Search
+  out_img, curves, lanes, ploty = sliding_window(warped_img)
 
-  #print leftx_base, rightx_base
-  #plt.plot(hist)
-  #plt.xlim([0,256])
-  #plt.show()
-  cv2.imwrite('/home/saga/warped_img.jpg',warped_img)
+  #plt.imshow(out_img)
+  #plt.plot(curves[0], ploty, color='yellow', linewidth=1)
+  #plt.plot(curves[1], ploty, color='yellow', linewidth=1)
+
+  #img_ = draw_lanes(out_img, curves[0], curves[1])
+  #plt.imshow(img_, cmap='hsv')
+  #print(np.asarray(curves).shape)
+
+  cv2.imwrite('/home/saga/warped_img.jpg',out_img)
   #cv2.imshow('image',warped_img)
   #cv2.waitKey(0)
   #cv2.destroyAllWindows()
