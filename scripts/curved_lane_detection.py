@@ -103,6 +103,8 @@ def sliding_window(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
     # Create empty lists to receive left and right lane pixel indices
     left_lane_inds = []
     right_lane_inds = []
+    left_lane_inds1= []
+    right_lane_inds1 = []
 
     # empty lists to store the information of lane
     points = []
@@ -119,12 +121,7 @@ def sliding_window(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
         win_xright_high = rightx_current + margin
         #if top < 0 or bottom > self.height - 1 or left < 0 or right > self.width - 1:
                 #break
-        # Draw the windows on the visualization image
-        if draw_windows == True:
-            cv2.rectangle(out_img,(win_xleft_low,win_y_low),(win_xleft_high,win_y_high),
-            (100,255,255), 3)
-            cv2.rectangle(out_img,(win_xright_low,win_y_low),(win_xright_high,win_y_high),
-            (100,255,255), 3)
+
         # Identify the nonzero pixels in x and y within the window
         good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
         (nonzerox >= win_xleft_low) &  (nonzerox < win_xleft_high)).nonzero()[0]
@@ -132,34 +129,251 @@ def sliding_window(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
         (nonzerox >= win_xright_low) &  (nonzerox < win_xright_high)).nonzero()[0]
         block_o= img[win_y_low:win_y_high, win_xleft_low:win_xleft_high]
         whitePixels_o = np.argwhere(block_o == 255)
+
         # Append these indices to the lists
         left_lane_inds.append(good_left_inds)
         right_lane_inds.append(good_right_inds)
+
         # If you found > minpix pixels, recenter next window on their mean position
         if len(good_left_inds) > minpix:
             leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
         if len(good_right_inds) > minpix:
             rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
 
-        # Modified Sliding Window Algorithm
-        # Search along the path
-        changeVector = [70,0]
-        oldCenter = [leftx_current, (win_y_low+win_y_high)/2]
-        windowSize = 100
-        seek_angle = 0.2
-        step_size = 70
-        changeVectors = [changeVector]
+        counter = 0
+        step_size = 15
+        leftx_current1 = leftx_current
+        rightx_current1 = rightx_current
+        whitePixelsvector_l = []
+        whitePixelsvector_r = []
 
-        # First perform seek forward behavior
-        #avgPixel, whitePixels, newCenter = seekForward(img, changeVector, oldCenter, windowSize)
+        # Each iteration is a fresh search attempt farther out from the last known lane point
+        while (1):
+            counter += 1
+            leftx_current1 = leftx_current1+step_size
+            rightx_current1 = rightx_current1+step_size
+            # Break out if max iteartion exceeded
+            if counter > 3:
+             break
+            win_y_low1 = img.shape[0] - (window+1)*window_height
+            win_y_high1 = img.shape[0] - window*window_height
+            win_xleft_low1 = leftx_current1 - margin
+            win_xleft_high1 = leftx_current1 + margin
+            win_xright_low1 = rightx_current1 - margin
+            win_xright_high1 = rightx_current1 + margin
 
-        # If first seek forward fails, perform two more shifted to the left and right by (no
-        # concrete reason to use default .17)
-        #if avgPixel is None:
-           # create an anonymous function to map points to a new space based on the heading of the car
-        rotatevvector = [int(changeVector[0] * math.cos(seek_angle) + changeVector[1] * math.sin(seek_angle)),
-                                                         int(changeVector[1] * math.cos(seek_angle) - changeVector[0] * math.sin(seek_angle))]
-        avgPixel, whitePixels, newCenter = seekForward(img, rotatevvector, oldCenter, windowSize)
+            # Identify the nonzero pixels in x and y within the window
+            block_l = img[win_y_low1:win_y_high1, win_xleft_low1:win_xleft_high1]
+            whitePixels_l = np.argwhere(block_l == 255)
+            block_r = img[win_y_low1:win_y_high1, win_xright_low1:win_xright_high1]
+            whitePixels_r = np.argwhere(block_r == 255)
+            if whitePixels_l is not None:
+              #print window, len(whitePixels_o), len(whitePixels) #avgPixel, newCenter, changeVector, rotatevvector
+              whitePixelsvector_l.append(len(whitePixels_l))
+            if whitePixels_r is not None:
+              #print window, len(whitePixels_o), len(whitePixels_r) #avgPixel, newCenter, changeVector, rotatevvector
+              whitePixelsvector_r.append(len(whitePixels_r))
+
+        # Draw the windows on the visualization image
+        #for whitePixels in whitePixelsvector:
+        if len(whitePixelsvector_l)>0: #draw_windows == True
+           #print np.max(whitePixelsvector)
+           if np.max(whitePixelsvector_l) > len(whitePixels_o):
+              cv2.rectangle(out_img,(win_xleft_low1,win_y_low1),(win_xleft_high1,win_y_high1),(0,0,255), 3)
+              curr_win_xleft = [win_xleft_low1, win_xleft_high1]
+           else:
+              cv2.rectangle(out_img,(win_xleft_low,win_y_low),(win_xleft_high,win_y_high), (100,255,255), 3)
+              curr_win_xleft = [win_xleft_low1, win_xleft_high1]
+
+        if len(whitePixelsvector_r)>0: #draw_windows == True
+           if np.max(whitePixelsvector_r) > len(whitePixels_o):
+              cv2.rectangle(out_img,(win_xright_low1,win_y_low1),(win_xright_high1,win_y_high1),(0,0,255), 3)
+              curr_win_xright = [win_xright_low1, win_xright_high1]
+           else:
+              cv2.rectangle(out_img,(win_xright_low,win_y_low),(win_xright_high,win_y_high),(100,255,255), 3)
+              curr_win_xright = [win_xright_low1, win_xright_high1]
+
+        # Identify the nonzero pixels in x and y within the window
+        good_left_inds1 = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
+        (nonzerox >= curr_win_xleft[0]) &  (nonzerox < curr_win_xleft[1])).nonzero()[0]
+        good_right_inds1 = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
+        (nonzerox >= curr_win_xright[0]) &  (nonzerox < curr_win_xright[1])).nonzero()[0]
+
+        # Append these indices to the lists
+        left_lane_inds1.append(good_left_inds1)
+        right_lane_inds1.append(good_right_inds1)
+
+    # Concatenate the arrays of indices
+    left_lane_inds1 = np.concatenate(left_lane_inds1)
+    right_lane_inds1 = np.concatenate(right_lane_inds1)
+
+    # Extract left and right line pixel positions
+    leftx = nonzerox[left_lane_inds1]
+    lefty = nonzeroy[left_lane_inds1]
+    rightx = nonzerox[right_lane_inds1]
+    righty = nonzeroy[right_lane_inds1]
+
+    # Fit a second order polynomial to
+    left_fit = np.polyfit(lefty, leftx, 2)
+    right_fit = np.polyfit(righty, rightx, 2)
+
+    left_a.append(left_fit[0])
+    left_b.append(left_fit[1])
+    left_c.append(left_fit[2])
+
+    right_a.append(right_fit[0])
+    right_b.append(right_fit[1])
+    right_c.append(right_fit[2])
+
+    left_fit_[0] = np.mean(left_a[-10:])
+    left_fit_[1] = np.mean(left_b[-10:])
+    left_fit_[2] = np.mean(left_c[-10:])
+
+    right_fit_[0] = np.mean(right_a[-10:])
+    right_fit_[1] = np.mean(right_b[-10:])
+    right_fit_[2] = np.mean(right_c[-10:])
+
+    # Generate x and y values for plotting
+    ploty = np.linspace(0, img.shape[0]-1, img.shape[0] )
+    left_fitx = left_fit_[0]*ploty**2 + left_fit_[1]*ploty + left_fit_[2]
+    right_fitx = right_fit_[0]*ploty**2 + right_fit_[1]*ploty + right_fit_[2]
+
+    out_img[nonzeroy[left_lane_inds1], nonzerox[left_lane_inds1]] = [255, 0, 100]
+    out_img[nonzeroy[right_lane_inds1], nonzerox[right_lane_inds1]] = [0, 100, 255]
+
+    return out_img, (left_fitx, right_fitx), (left_fit_, right_fit_), ploty
+
+def perspective_warp(img,
+                     dst_size=(1920,1080),
+                     src=np.float32([(550.0,0.0),(1500,0),(1500,1023),(450,1034)]), # Choose the four vertices
+                     dst=np.float32([(0,0), (1, 0), (1,1), (0,1)])):
+
+    # For destination points, I'm arbitrarily choosing some points to be
+    # a nice fit for displaying our warped result
+    # again, not exact, but close enough for our purposes
+    dst = dst * np.float32(dst_size)
+
+    # Given src and dst points, calculate the perspective transform matrix
+    M = cv2.getPerspectiveTransform(src, dst)
+    # Warp the image using OpenCV warpPerspective()
+    warped = cv2.warpPerspective(img, M, dst_size)
+    return warped
+
+def get_curve(img, leftx, rightx):
+    ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
+    y_eval = np.max(ploty)
+    ym_per_pix = 30.5/720 # meters per pixel in y dimension
+    xm_per_pix = 3.7/720 # meters per pixel in x dimension
+
+    # Fit new polynomials to x,y in world space
+    left_fit_cr = np.polyfit(ploty*ym_per_pix, leftx*xm_per_pix, 2)
+    right_fit_cr = np.polyfit(ploty*ym_per_pix, rightx*xm_per_pix, 2)
+    # Calculate the new radii of curvature
+    left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
+    right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
+
+    car_pos = img.shape[1]/2
+    l_fit_x_int = left_fit_cr[0]*img.shape[0]**2 + left_fit_cr[1]*img.shape[0] + left_fit_cr[2]
+    r_fit_x_int = right_fit_cr[0]*img.shape[0]**2 + right_fit_cr[1]*img.shape[0] + right_fit_cr[2]
+    lane_center_position = (r_fit_x_int + l_fit_x_int) /2
+    center = (car_pos - lane_center_position) * xm_per_pix / 10
+    # Now our radius of curvature is in meters
+    return (left_curverad, right_curverad, center)
+
+def draw_lanes(img, left_fit, right_fit):
+    ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
+    color_img = np.zeros_like(img)
+
+    left = np.array([np.transpose(np.vstack([left_fit, ploty]))])
+    right = np.array([np.flipud(np.transpose(np.vstack([right_fit, ploty])))])
+    points = np.hstack((left, right))
+
+    cv2.fillPoly(color_img, np.int_(points), (0,200,255))
+    inv_perspective = inv_perspective_warp(color_img)
+    inv_perspective = cv2.addWeighted(img, 1, inv_perspective, 0.7, 0)
+    return inv_perspective
+
+if __name__ == '__main__':
+  rospy.init_node('curved_lane_detector', anonymous=True)
+  rospy.spin()
+
+  # Load an color image in grayscale
+  img = cv2.imread('/home/saga/curved_lane.jpg')
+
+  # Convert BGR to HSV
+  hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+  height, width = hsv.shape[:2]
+
+  # Getting ROI
+  Roi = hsv[roi_y:height,roi_x:width] #-(roi_y+1),-(roi_x+1)
+
+  # define range of blue color in HSV
+  lower_t = np.array([low_H,low_S,low_V])
+  upper_t = np.array([high_H,high_S,high_V])
+
+  # Detect the object based on HSV Range Values v_min 71.65 v_max 179.0,242.25,200.60
+  mask = cv2.inRange(Roi, lower_t, upper_t)
+
+  # Opening the image
+  kernel = np.ones((7,7),np.uint8)
+  eroded = cv2.erode(mask, kernel, iterations = 1) # eroding + dilating = opening
+  wscale = cv2.dilate(eroded, kernel, iterations = 1)
+  ret,thresh = cv2.threshold(wscale,128,255,cv2.THRESH_BINARY_INV) # thresholding the image //THRESH_BINARY_INV
+
+  # Perspective warp
+  rheight, rwidth = thresh.shape[:2]
+  warped_img = perspective_warp(thresh,dst_size=(rheight,rwidth),
+                                src=np.float32([(550.0,0.0),(1500,0),(1500,1023-(roi_y+1)),(450,1034-(roi_y+1))]))
+
+  # Sliding Window Search
+  out_img, curves, lanes, ploty = sliding_window(warped_img)
+
+  plt.imshow(out_img)
+  plt.plot(curves[0], ploty, color='yellow', linewidth=1)
+  plt.plot(curves[1], ploty, color='yellow', linewidth=1)
+
+  #img_ = draw_lanes(out_img, curves[0], curves[1])
+  #plt.imshow(img_, cmap='hsv')
+  #print(np.asarray(curves).shape)
+  cv2.imwrite('/home/saga/warped_img.jpg', out_img)
+
+  #cv2.imshow('image',warped_img)
+  #cv2.waitKey(0)
+  #cv2.destroyAllWindows()
+
+          # Modified Sliding Window Algorithm
+          # Search along the path
+          #changeVector = [70,0]
+          #oldCenter = [leftx_current, (win_y_low+win_y_high)/2]
+          #windowSize = 100
+          #seek_angle = 0.2
+          #changeVectors = [changeVector]
+
+          # First perform seek forward behavior
+          #avgPixel, whitePixels, newCenter = seekForward(img, changeVector, oldCenter, windowSize)
+
+          # If first seek forward fails, perform two more shifted to the left and right by (no
+          # concrete reason to use default .17)
+          #if avgPixel is None:
+             # create an anonymous function to map points to a new space based on the heading of the car
+          #rotatevvector = [int(changeVector[0] * math.cos(seek_angle) + changeVector[1] * math.sin(seek_angle)),
+          #int(changeVector[1] * math.cos(seek_angle) - changeVector[0] * math.sin(seek_angle))]
+
+            #return None, None, None
+            #topLeft, bottomLeft, bottomRight, topRight = getRect(changeVector, oldCenter, windowSize)
+            #print topLeft, bottomLeft, bottomRight, topRight
+            #if topLeft[0] < 0 or bottomLeft[0] > img.shape[0] - 1 or bottomLeft[1] < 0 or bottomRight[1] > img.shape[1] - 1:
+                #return None, None, None
+            #block = img[topLeft[0]:bottomLeft[0], bottomLeft[1]:bottomRight[1]]
+            #whitePixels = np.argwhere(block == 255)
+            #if len(whitePixels):
+             #avgPixel = np.mean(whitePixels, axis=0)
+             #try:
+                #newCenter = [topLeft[0] + int(avgPixel[0]), topLeft[1] + int(avgPixel[1])]
+                #return avgPixel, whitePixels, newCenter
+             #except Exception, e:
+                #center = np.add(oldCenter, changeVector)
+        #avgPixel, whitePixels, newCenter = seekForward(img, rotatevvector, oldCenter, windowSize)
 
         #if avgPixel is None:
            # create an anonymous function to map points to a new space based on the heading of the car
@@ -169,8 +383,7 @@ def sliding_window(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
             #print window, avgPixel, newCenter
             #print window, changeVector,rotatevvector
 
-        if whitePixels is not None:
-            print window, len(whitePixels_o), len(whitePixels) #avgPixel, newCenter, changeVector, rotatevvector
+
             # add the confidence value correpsonding to point
             # this is represented by the number of white pixels used to get the point
             # less white pixels is lower confidence (direct inverse proportional)
@@ -209,107 +422,3 @@ def sliding_window(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
          #win_xleft_high1 = newCenter[0] + margin
          #cv2.rectangle(out_img,(win_xleft_low1,win_y_low1),(win_xleft_high1,win_y_high1),
             #(0,0,255), 3)
-
-    # Concatenate the arrays of indices
-    left_lane_inds = np.concatenate(left_lane_inds)
-    right_lane_inds = np.concatenate(right_lane_inds)
-
-    # Extract left and right line pixel positions
-    leftx = nonzerox[left_lane_inds]
-    lefty = nonzeroy[left_lane_inds]
-    rightx = nonzerox[right_lane_inds]
-    righty = nonzeroy[right_lane_inds]
-
-    # Fit a second order polynomial to
-    left_fit = np.polyfit(lefty, leftx, 2)
-    right_fit = np.polyfit(righty, rightx, 2)
-
-    left_a.append(left_fit[0])
-    left_b.append(left_fit[1])
-    left_c.append(left_fit[2])
-
-    right_a.append(right_fit[0])
-    right_b.append(right_fit[1])
-    right_c.append(right_fit[2])
-
-    left_fit_[0] = np.mean(left_a[-10:])
-    left_fit_[1] = np.mean(left_b[-10:])
-    left_fit_[2] = np.mean(left_c[-10:])
-
-    right_fit_[0] = np.mean(right_a[-10:])
-    right_fit_[1] = np.mean(right_b[-10:])
-    right_fit_[2] = np.mean(right_c[-10:])
-
-    # Generate x and y values for plotting
-    ploty = np.linspace(0, img.shape[0]-1, img.shape[0] )
-    left_fitx = left_fit_[0]*ploty**2 + left_fit_[1]*ploty + left_fit_[2]
-    right_fitx = right_fit_[0]*ploty**2 + right_fit_[1]*ploty + right_fit_[2]
-
-    out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 100]
-    out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 100, 255]
-
-    return out_img, (left_fitx, right_fitx), (left_fit_, right_fit_), ploty
-
-def perspective_warp(img,
-                     dst_size=(1920,1080),
-                     src=np.float32([(550.0,0.0),(1500,0),(1500,1023),(450,1034)]), # Choose the four vertices
-                     dst=np.float32([(0,0), (1, 0), (1,1), (0,1)])):
-
-    # For destination points, I'm arbitrarily choosing some points to be
-    # a nice fit for displaying our warped result
-    # again, not exact, but close enough for our purposes
-    dst = dst * np.float32(dst_size)
-
-    # Given src and dst points, calculate the perspective transform matrix
-    M = cv2.getPerspectiveTransform(src, dst)
-    # Warp the image using OpenCV warpPerspective()
-    warped = cv2.warpPerspective(img, M, dst_size)
-    return warped
-
-if __name__ == '__main__':
-  rospy.init_node('curved_lane_detector', anonymous=True)
-  rospy.spin()
-
-  # Load an color image in grayscale
-  img = cv2.imread('/home/saga/curved_lane.jpg')
-
-  # Convert BGR to HSV
-  hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-  height, width = hsv.shape[:2]
-
-  # Getting ROI
-  Roi = hsv[roi_y:height,roi_x:width] #-(roi_y+1),-(roi_x+1)
-
-  # define range of blue color in HSV
-  lower_t = np.array([low_H,low_S,low_V])
-  upper_t = np.array([high_H,high_S,high_V])
-
-  # Detect the object based on HSV Range Values v_min 71.65 v_max 179.0,242.25,200.60
-  mask = cv2.inRange(Roi, lower_t, upper_t)
-
-  # Opening the image
-  kernel = np.ones((7,7),np.uint8)
-  eroded = cv2.erode(mask, kernel, iterations = 1) # eroding + dilating = opening
-  wscale = cv2.dilate(eroded, kernel, iterations = 1)
-  ret,thresh = cv2.threshold(wscale,128,255,cv2.THRESH_BINARY_INV) # thresholding the image //THRESH_BINARY_INV
-
-  # Perspective warp
-  rheight, rwidth = thresh.shape[:2]
-  warped_img = perspective_warp(thresh,dst_size=(rheight,rwidth),
-                                src=np.float32([(550.0,0.0),(1500,0),(1500,1023-(roi_y+1)),(450,1034-(roi_y+1))]))
-
-  # Sliding Window Search
-  out_img, curves, lanes, ploty = sliding_window(warped_img)
-
-  #plt.imshow(out_img)
-  #plt.plot(curves[0], ploty, color='yellow', linewidth=1)
-  #plt.plot(curves[1], ploty, color='yellow', linewidth=1)
-
-  #img_ = draw_lanes(out_img, curves[0], curves[1])
-  #plt.imshow(img_, cmap='hsv')
-  #print(np.asarray(curves).shape)
-  cv2.imwrite('/home/saga/warped_img.jpg', out_img)
-
-  #cv2.imshow('image',warped_img)
-  #cv2.waitKey(0)
-  #cv2.destroyAllWindows()
