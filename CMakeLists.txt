@@ -175,6 +175,7 @@ add_dependencies(shadow_removal ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXP
 ## in contrast to setup.py, you can choose the destination
 install(PROGRAMS
   scripts/curved_lane_detection.py
+  scripts/lane_detection.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

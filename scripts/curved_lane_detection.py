@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import pickle
 import math
 from numpy import linalg as LA
+from moviepy.editor import VideoFileClip
 
 roi_x = 0
 roi_y = 300
@@ -280,6 +281,22 @@ def get_curve(img, leftx, rightx):
     # Now our radius of curvature is in meters
     return (left_curverad, right_curverad, center)
 
+def inv_perspective_warp(img,
+                     dst_size=(1280,720),
+                     src=np.float32([(0,0), (1, 0), (0,1), (1,1)]),
+                     dst=np.float32([(0.43,0.65),(0.58,0.65),(0.1,1),(1,1)])):
+    img_size = np.float32([(img.shape[1],img.shape[0])])
+    src = src* img_size
+    # For destination points, I'm arbitrarily choosing some points to be
+    # a nice fit for displaying our warped result
+    # again, not exact, but close enough for our purposes
+    dst = dst * np.float32(dst_size)
+    # Given src and dst points, calculate the perspective transform matrix
+    M = cv2.getPerspectiveTransform(src, dst)
+    # Warp the image using OpenCV warpPerspective()
+    warped = cv2.warpPerspective(img, M, dst_size)
+    return warped
+
 def draw_lanes(img, left_fit, right_fit):
     ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
     color_img = np.zeros_like(img)
@@ -290,8 +307,9 @@ def draw_lanes(img, left_fit, right_fit):
 
     cv2.fillPoly(color_img, np.int_(points), (0,200,255))
     inv_perspective = inv_perspective_warp(color_img)
-    inv_perspective = cv2.addWeighted(img, 1, inv_perspective, 0.7, 0)
+    #inv_perspective = cv2.addWeighted(img, 1, inv_perspective, 0.7, 0)
     return inv_perspective
+
 
 if __name__ == '__main__':
   rospy.init_node('curved_lane_detector', anonymous=True)
@@ -328,12 +346,13 @@ if __name__ == '__main__':
   # Sliding Window Search
   out_img, curves, lanes, ploty = sliding_window(warped_img)
 
-  plt.imshow(out_img)
-  plt.plot(curves[0], ploty, color='yellow', linewidth=1)
-  plt.plot(curves[1], ploty, color='yellow', linewidth=1)
-
-  #img_ = draw_lanes(out_img, curves[0], curves[1])
-  #plt.imshow(img_, cmap='hsv')
+  #plt.imshow(out_img)
+  #plt.plot(curves[0], ploty, color='yellow', linewidth=1)
+  #plt.plot(curves[1], ploty, color='yellow', linewidth=1)
+  #plt.show()
+  img_ = draw_lanes(out_img, curves[0], curves[1])
+  plt.imshow(img_, cmap='hsv')
+  plt.show()
   #print(np.asarray(curves).shape)
   cv2.imwrite('/home/saga/warped_img.jpg', out_img)
 
