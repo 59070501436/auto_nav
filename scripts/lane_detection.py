@@ -247,7 +247,6 @@ def vid_pipeline(cap):
 def lane_detector():
   rospy.init_node('lane_detector')
 
-  #myclip = VideoFileClip('/home/saga/ICRA_2020/wheel_tracks.avi')#.subclip(40,43)
   cap = cv2.VideoCapture("/home/saga/ICRA_2020/wheel_tracks.avi")
   # Check if camera opened successfully
   if (cap.isOpened()== False):

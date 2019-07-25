@@ -79,6 +79,55 @@ def seekForward(img, changeVector, oldCenter, windowSize):
                 #cv2.circle(img, tuple(oldCenter[::-1]), 5, (0, 0, 255), -1)
             return None, None, None
 
+def sliding_window1(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
+    global left_a, left_b, left_c,right_a, right_b, right_c
+    left_fit_= np.empty(3)
+    right_fit_ = np.empty(3)
+    out_img = np.dstack((img, img, img))*255
+
+    # find peaks of left and right halves
+    histogram = np.sum(warped_img[img.shape[0]//2:,:], axis=0) # Histrogram
+    midpoint = int(histogram.shape[0]/2)
+    leftx_base = np.argmax(histogram[:midpoint])
+    rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+
+    # Set height of windows
+    window_height = np.int(img.shape[0]/nwindows)
+    # Identify the x and y positions of all nonzero pixels in the image
+    nonzero = img.nonzero()
+    nonzeroy = np.array(nonzero[0])
+    nonzerox = np.array(nonzero[1])
+    # Current positions to be updated for each window
+    leftx_current = leftx_base
+    rightx_current = rightx_base
+
+    # Set height of windows
+    window_height = np.int(img.shape[0]/nwindows)
+    # Identify the x and y positions of all nonzero pixels in the image
+    nonzero = img.nonzero()
+    nonzeroy = np.array(nonzero[0])
+    nonzerox = np.array(nonzero[1])
+    # Current positions to be updated for each window
+    leftx_current = leftx_base
+    rightx_current = rightx_base
+
+    for window in range(nwindows):
+      # Identify window boundaries in x and y (and right and left)
+      win_y_low = img.shape[0] - (window+1)*window_height
+      win_y_high = img.shape[0] - window*window_height
+      win_xleft_low = leftx_current - margin
+      win_xleft_high = leftx_current + margin
+      win_xright_low = rightx_current - margin
+      win_xright_high = rightx_current + margin
+
+      cv2.rectangle(out_img,(win_xleft_low,win_y_low),(win_xleft_high,win_y_high), (100,255,255), 3)
+
+    # Calcaute the tangential angle between center of the last two windows
+    # UPDATE THE leftx_current, rightx_current
+
+
+    return out_img
+
 def sliding_window(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
     global left_a, left_b, left_c,right_a, right_b, right_c
     left_fit_= np.empty(3)
@@ -261,10 +310,10 @@ def perspective_warp(img,
     return warped
 
 def get_curve(img, leftx, rightx):
-    ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
+    ploty = np.linspace(0, img.shape[1]-1, img.shape[1])
     y_eval = np.max(ploty)
-    ym_per_pix = 30.5/720 # meters per pixel in y dimension
-    xm_per_pix = 3.7/720 # meters per pixel in x dimension
+    ym_per_pix = 37.5/ img.shape[1] # meters per pixel in y dimension
+    xm_per_pix = 3.5/ img.shape[1] # meters per pixel in x dimension
 
     # Fit new polynomials to x,y in world space
     left_fit_cr = np.polyfit(ploty*ym_per_pix, leftx*xm_per_pix, 2)
@@ -316,7 +365,7 @@ if __name__ == '__main__':
   rospy.spin()
 
   # Load an color image in grayscale
-  img = cv2.imread('/home/saga/curved_lane.jpg')
+  img = cv2.imread('/home/vignesh/ICRA_2020/curved_lane.jpg')
 
   # Convert BGR to HSV
   hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -346,15 +395,22 @@ if __name__ == '__main__':
   # Sliding Window Search
   out_img, curves, lanes, ploty = sliding_window(warped_img)
 
+  #print(np.asarray(curves).shape)
+
+  curverad=get_curve(Roi, curves[0],curves[1])
+  print(curverad)
+
+  #out_img = sliding_window1(warped_img)
+
   #plt.imshow(out_img)
   #plt.plot(curves[0], ploty, color='yellow', linewidth=1)
   #plt.plot(curves[1], ploty, color='yellow', linewidth=1)
   #plt.show()
-  img_ = draw_lanes(out_img, curves[0], curves[1])
-  plt.imshow(img_, cmap='hsv')
-  plt.show()
+  #img_ = draw_lanes(out_img, curves[0], curves[1])
+  #plt.imshow(img_, cmap='hsv')
+  #plt.show()
   #print(np.asarray(curves).shape)
-  cv2.imwrite('/home/saga/warped_img.jpg', out_img)
+  #cv2.imwrite('/home/vignesh/warped_img.jpg', out_img)
 
   #cv2.imshow('image',warped_img)
   #cv2.waitKey(0)
