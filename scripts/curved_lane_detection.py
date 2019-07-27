@@ -12,9 +12,10 @@ import pickle
 import math
 from numpy import linalg as LA
 from moviepy.editor import VideoFileClip
+from os.path import expanduser
 
 roi_x = 0
-roi_y = 300
+roi_y = 540
 max_value_H = 360/2
 max_value = 255
 low_H = 0
@@ -79,7 +80,7 @@ def seekForward(img, changeVector, oldCenter, windowSize):
                 #cv2.circle(img, tuple(oldCenter[::-1]), 5, (0, 0, 255), -1)
             return None, None, None
 
-def sliding_window1(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
+def sliding_window1(img, nwindows=9, margin=50, minpix = 1, draw_windows=True):
     global left_a, left_b, left_c,right_a, right_b, right_c
     left_fit_= np.empty(3)
     right_fit_ = np.empty(3)
@@ -111,6 +112,8 @@ def sliding_window1(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
     leftx_current = leftx_base
     rightx_current = rightx_base
 
+    prev_point = []
+
     for window in range(nwindows):
       # Identify window boundaries in x and y (and right and left)
       win_y_low = img.shape[0] - (window+1)*window_height
@@ -120,11 +123,43 @@ def sliding_window1(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
       win_xright_low = rightx_current - margin
       win_xright_high = rightx_current + margin
 
-      cv2.rectangle(out_img,(win_xleft_low,win_y_low),(win_xleft_high,win_y_high), (100,255,255), 3)
+      # Identify the nonzero pixels in x and y within the window
+      good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
+      (nonzerox >= win_xleft_low) &  (nonzerox < win_xleft_high)).nonzero()[0]
+      good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
+      (nonzerox >= win_xright_low) &  (nonzerox < win_xright_high)).nonzero()[0]
 
-    # Calcaute the tangential angle between center of the last two windows
-    # UPDATE THE leftx_current, rightx_current
+      # If you found > minpix pixels, recenter next window on their mean position
+      if len(good_left_inds) > minpix:
+            leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
+      if len(good_right_inds) > minpix:
+            rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
 
+      win_y_low1 = img.shape[0] - (window+1)*window_height
+      win_y_high1 = img.shape[0] - window*window_height
+      win_xleft_low1 = leftx_current - margin
+      win_xleft_high1 = leftx_current + margin
+      win_xright_low1 = rightx_current - margin
+      win_xright_high1 = rightx_current + margin
+
+      cv2.circle(out_img, (leftx_current, (win_y_low1+win_y_high1)/2), 8, (0, 0, 255), -1)
+      cv2.rectangle(out_img, (win_xleft_low1, win_y_low1), (win_xleft_high1, win_y_high1), (100,255,255), 3)
+      cv2.rectangle(out_img, (win_xright_low1, win_y_low1), (win_xright_high1, win_y_high1), (100,255,255), 3)
+
+      # Calcaute the tangential angle between center of the last two windows
+      if window>0:
+       theta = math.atan2(prev_point[1]-(win_y_low1+win_y_high1)/2,prev_point[0]-leftx_current)-1.57
+       leftx_current1 = ((leftx_current-prev_point[0])*math.cos(theta)-(((win_y_low1+win_y_high1)/2)-prev_point[1])*math.sin(theta))
+       #print("Edge direction:", theta)
+       #print leftx_current, leftx_current1, leftx_current1+prev_point[0]
+
+       cv2.circle(out_img, (int(leftx_current1+prev_point[0]), (win_y_low1+win_y_high1)/2), 8, (0, 0, 255), -1)
+       win_xleft_low2 = int(leftx_current1+prev_point[0]) - margin
+       win_xleft_high2 = int(leftx_current1+prev_point[0]) + margin
+       cv2.rectangle(out_img, (win_xleft_low2, win_y_low1), (win_xleft_high2, win_y_high1), (0,0,255), 3)
+
+      # UPDATE THE leftx_current, rightx_current
+      prev_point = [leftx_current, (win_y_low1+win_y_high1)/2]
 
     return out_img
 
@@ -359,13 +394,14 @@ def draw_lanes(img, left_fit, right_fit):
     #inv_perspective = cv2.addWeighted(img, 1, inv_perspective, 0.7, 0)
     return inv_perspective
 
-
 if __name__ == '__main__':
   rospy.init_node('curved_lane_detector', anonymous=True)
   rospy.spin()
 
+
   # Load an color image in grayscale
-  img = cv2.imread('/home/vignesh/ICRA_2020/curved_lane.jpg')
+  home = expanduser("~/ICRA_2020/curved_lane.jpg") #very_curved.png"
+  img = cv2.imread(home) #'/home/saga/ICRA_2020/curved_lane.jpg')
 
   # Convert BGR to HSV
   hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -390,17 +426,15 @@ if __name__ == '__main__':
   # Perspective warp
   rheight, rwidth = thresh.shape[:2]
   warped_img = perspective_warp(thresh,dst_size=(rheight,rwidth),
-                                src=np.float32([(550.0,0.0),(1500,0),(1500,1023-(roi_y+1)),(450,1034-(roi_y+1))]))
+                                src=np.float32([(250,0.0),(1200,0),(1200,1023-(roi_y+1)),(250,1034-(roi_y+1))]))
 
   # Sliding Window Search
-  out_img, curves, lanes, ploty = sliding_window(warped_img)
-
+  #out_img, curves, lanes, ploty = sliding_window1(warped_img)
   #print(np.asarray(curves).shape)
+  #curverad=get_curve(Roi, curves[0],curves[1])
+  #print(curverad)
 
-  curverad=get_curve(Roi, curves[0],curves[1])
-  print(curverad)
-
-  #out_img = sliding_window1(warped_img)
+  out_img = sliding_window1(warped_img)
 
   #plt.imshow(out_img)
   #plt.plot(curves[0], ploty, color='yellow', linewidth=1)
@@ -410,7 +444,9 @@ if __name__ == '__main__':
   #plt.imshow(img_, cmap='hsv')
   #plt.show()
   #print(np.asarray(curves).shape)
-  #cv2.imwrite('/home/vignesh/warped_img.jpg', out_img)
+
+  img_dir = expanduser("~/warped_img.jpg")
+  cv2.imwrite(img_dir, out_img)
 
   #cv2.imshow('image',warped_img)
   #cv2.waitKey(0)
