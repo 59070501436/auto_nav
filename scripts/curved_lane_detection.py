@@ -15,7 +15,7 @@ from moviepy.editor import VideoFileClip
 from os.path import expanduser
 
 roi_x = 0
-roi_y = 540
+roi_y = 500
 max_value_H = 360/2
 max_value = 255
 low_H = 0
@@ -344,31 +344,7 @@ def perspective_warp(img,
     warped = cv2.warpPerspective(img, M, dst_size)
     return warped
 
-def get_curve(img, leftx, rightx):
-    ploty = np.linspace(0, img.shape[1]-1, img.shape[1])
-    y_eval = np.max(ploty)
-    ym_per_pix = 37.5/ img.shape[1] # meters per pixel in y dimension
-    xm_per_pix = 3.5/ img.shape[1] # meters per pixel in x dimension
-
-    # Fit new polynomials to x,y in world space
-    left_fit_cr = np.polyfit(ploty*ym_per_pix, leftx*xm_per_pix, 2)
-    right_fit_cr = np.polyfit(ploty*ym_per_pix, rightx*xm_per_pix, 2)
-    # Calculate the new radii of curvature
-    left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
-    right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
-
-    car_pos = img.shape[1]/2
-    l_fit_x_int = left_fit_cr[0]*img.shape[0]**2 + left_fit_cr[1]*img.shape[0] + left_fit_cr[2]
-    r_fit_x_int = right_fit_cr[0]*img.shape[0]**2 + right_fit_cr[1]*img.shape[0] + right_fit_cr[2]
-    lane_center_position = (r_fit_x_int + l_fit_x_int) /2
-    center = (car_pos - lane_center_position) * xm_per_pix / 10
-    # Now our radius of curvature is in meters
-    return (left_curverad, right_curverad, center)
-
-def inv_perspective_warp(img,
-                     dst_size=(1280,720),
-                     src=np.float32([(0,0), (1, 0), (0,1), (1,1)]),
-                     dst=np.float32([(0.43,0.65),(0.58,0.65),(0.1,1),(1,1)])):
+def inv_perspective_warp(img, dst_size, src, dst):
     img_size = np.float32([(img.shape[1],img.shape[0])])
     src = src* img_size
     # For destination points, I'm arbitrarily choosing some points to be
@@ -382,16 +358,24 @@ def inv_perspective_warp(img,
     return warped
 
 def draw_lanes(img, left_fit, right_fit):
-    ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
+    ploty = np.linspace(0, img.shape[1]-1, img.shape[1])
     color_img = np.zeros_like(img)
 
-    left = np.array([np.transpose(np.vstack([left_fit, ploty]))])
-    right = np.array([np.flipud(np.transpose(np.vstack([right_fit, ploty])))])
+    left = np.array([np.transpose(np.vstack([left_fit+roi_y, ploty]))])
+    right = np.array([np.flipud(np.transpose(np.vstack([right_fit+roi_y, ploty])))])
     points = np.hstack((left, right))
 
     cv2.fillPoly(color_img, np.int_(points), (0,200,255))
-    inv_perspective = inv_perspective_warp(color_img)
-    #inv_perspective = cv2.addWeighted(img, 1, inv_perspective, 0.7, 0)
+
+    dst_size=(rwidth, rheight) #+roi_x +roi_y
+    src=np.float32([(0,0), (1, 0), (0,1), (1,1)])
+    dst=np.float32([(0,0), (1, 0), (0,1), (1,1)])
+    inv_perspective = inv_perspective_warp(color_img, dst_size, src, dst)
+
+    #print img.shape, inv_perspective.shape
+
+    inv_perspective = cv2.addWeighted(img, 1, inv_perspective, 0.7, 0)
+
     return inv_perspective
 
 if __name__ == '__main__':
@@ -429,24 +413,27 @@ if __name__ == '__main__':
                                 src=np.float32([(250,0.0),(1200,0),(1200,1023-(roi_y+1)),(250,1034-(roi_y+1))]))
 
   # Sliding Window Search
-  #out_img, curves, lanes, ploty = sliding_window1(warped_img)
-  #print(np.asarray(curves).shape)
-  #curverad=get_curve(Roi, curves[0],curves[1])
-  #print(curverad)
+  out_img, curves, lanes, ploty = sliding_window(warped_img)
 
-  out_img = sliding_window1(warped_img)
+  #print warped_img.shape
+
+  Roi_c = cv2.cvtColor(Roi, cv2.COLOR_HSV2BGR)
+  img_ = draw_lanes(Roi_c, curves[0], curves[1])
+
+  #out_img = sliding_window1(warped_img)
+  #print(np.asarray(curves).shape)
 
   #plt.imshow(out_img)
   #plt.plot(curves[0], ploty, color='yellow', linewidth=1)
   #plt.plot(curves[1], ploty, color='yellow', linewidth=1)
   #plt.show()
-  #img_ = draw_lanes(out_img, curves[0], curves[1])
+  #img_ = draw_lanes(Roi, curves[0], curves[1])
   #plt.imshow(img_, cmap='hsv')
   #plt.show()
   #print(np.asarray(curves).shape)
 
   img_dir = expanduser("~/warped_img.jpg")
-  cv2.imwrite(img_dir, out_img)
+  cv2.imwrite(img_dir, img_)
 
   #cv2.imshow('image',warped_img)
   #cv2.waitKey(0)

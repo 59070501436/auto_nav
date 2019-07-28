@@ -246,7 +246,7 @@ def vid_pipeline(cap):
     #curverad=get_curve(Roi, curves[0],curves[1])
     #print(curverad)
 
-    Roi_c = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
+    #Roi_c = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
     img_ = draw_lanes(thresh, curves[0], curves[1])
 
     #plt.imshow(img_, cmap='hsv')
