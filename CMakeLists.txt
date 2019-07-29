@@ -176,6 +176,7 @@ add_dependencies(shadow_removal ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXP
 install(PROGRAMS
   scripts/curved_lane_detection.py
   scripts/lane_detection.py
+  scripts/test.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

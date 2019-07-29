@@ -13,6 +13,8 @@ import math
 from numpy import linalg as LA
 from moviepy.editor import VideoFileClip
 from os.path import expanduser
+#from matplotlib.lines import Line2D
+#import matplotlib.animation as animation
 
 roi_x = 0
 roi_y = 500
@@ -28,7 +30,7 @@ high_V = 145
 left_a, left_b, left_c = [],[],[]
 right_a, right_b, right_c = [],[],[]
 
-def perspective_warp(img, dst_size, src, dst):
+def perspective_warp(img, dst_size, src, dst): # Choose the four vertices
 
     # For destination points, I'm arbitrarily choosing some points to be
     # a nice fit for displaying our warped result
@@ -37,11 +39,28 @@ def perspective_warp(img, dst_size, src, dst):
 
     # Given src and dst points, calculate the perspective transform matrix
     M = cv2.getPerspectiveTransform(src, dst)
+    #Minv = cv2.getPerspectiveTransform(dst, src)
+    # Warp the image using OpenCV warpPerspective()
+    warped = cv2.warpPerspective(img, M, dst_size)
+    #dst_size1 = (580,1920)
+    #unwarped = cv2.warpPerspective(warped, Minv, dst_size1)
+
+    return warped, M  #, Minv, unwarped
+
+def inv_perspective_warp(img, dst_size, src, dst):
+    img_size = np.float32([(img.shape[1],img.shape[0])])
+    src = src* img_size
+    # For destination points, I'm arbitrarily choosing some points to be
+    # a nice fit for displaying our warped result
+    # again, not exact, but close enough for our purposes
+    dst = dst * np.float32(dst_size)
+    # Given src and dst points, calculate the perspective transform matrix
+    M = cv2.getPerspectiveTransform(src, dst)
     # Warp the image using OpenCV warpPerspective()
     warped = cv2.warpPerspective(img, M, dst_size)
     return warped
 
-def sliding_window(img, nwindows=15, margin=40, minpix = 1, draw_windows=True):
+def sliding_window(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
     global left_a, left_b, left_c,right_a, right_b, right_c
     left_fit_= np.empty(3)
     right_fit_ = np.empty(3)
@@ -76,7 +95,6 @@ def sliding_window(img, nwindows=15, margin=40, minpix = 1, draw_windows=True):
     # Create empty lists to receive left and right lane pixel indices
     left_lane_inds = []
     right_lane_inds = []
-    #prev_point = []
 
     for window in range(nwindows):
       # Identify window boundaries in x and y (and right and left)
@@ -86,13 +104,6 @@ def sliding_window(img, nwindows=15, margin=40, minpix = 1, draw_windows=True):
       win_xleft_high = leftx_current + margin
       win_xright_low = rightx_current - margin
       win_xright_high = rightx_current + margin
-
-      # Draw the windows on the visualization image
-      if draw_windows == True:
-        cv2.rectangle(out_img,(win_xleft_low,win_y_low),(win_xleft_high,win_y_high),
-            (100,255,255), 3)
-        cv2.rectangle(out_img,(win_xright_low,win_y_low),(win_xright_high,win_y_high),
-            (100,255,255), 3)
 
       # Identify the nonzero pixels in x and y within the window
       good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
@@ -109,6 +120,13 @@ def sliding_window(img, nwindows=15, margin=40, minpix = 1, draw_windows=True):
             leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
       if len(good_right_inds) > minpix:
             rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
+
+      # Draw the windows on the visualization image
+      if draw_windows == True:
+        cv2.rectangle(out_img,(win_xleft_low,win_y_low),(win_xleft_high,win_y_high),
+            (100,255,255), 3)
+        cv2.rectangle(out_img,(win_xright_low,win_y_low),(win_xright_high,win_y_high),
+            (100,255,255), 3)
 
     # Concatenate the arrays of indices
     left_lane_inds = np.concatenate(left_lane_inds)
@@ -148,58 +166,7 @@ def sliding_window(img, nwindows=15, margin=40, minpix = 1, draw_windows=True):
     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 100]
     out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 100, 255]
 
-    #return out_img
     return out_img, (left_fitx, right_fitx), (left_fit_, right_fit_), ploty
-
-def inv_perspective_warp(img,
-                     dst_size=(1280,720),
-                     src=np.float32([(0,0), (1, 0), (0,1), (1,1)]),
-                     dst=np.float32([(0.43,0.65),(0.58,0.65),(0.1,1),(1,1)])):
-    img_size = np.float32([(img.shape[1],img.shape[0])])
-    src = src* img_size
-    # For destination points, I'm arbitrarily choosing some points to be
-    # a nice fit for displaying our warped result
-    # again, not exact, but close enough for our purposes
-    dst = dst * np.float32(dst_size)
-    # Given src and dst points, calculate the perspective transform matrix
-    M = cv2.getPerspectiveTransform(src, dst)
-    # Warp the image using OpenCV warpPerspective()
-    warped = cv2.warpPerspective(img, M, dst_size)
-    return warped
-
-def draw_lanes(img, left_fit, right_fit):
-    ploty = np.linspace(0, img.shape[1]-1, img.shape[1])
-    color_img = np.zeros_like(img)
-
-    left = np.array([np.transpose(np.vstack([left_fit, ploty]))])
-    right = np.array([np.flipud(np.transpose(np.vstack([right_fit, ploty])))])
-    points = np.hstack((left, right))
-    print points
-    cv2.fillPoly(color_img, np.int_(points), (0,200,255))
-    inv_perspective = inv_perspective_warp(color_img,dst_size=(img.shape[0],img.shape[1]))
-    #inv_perspective = cv2.addWeighted(img, 1, inv_perspective, 0.7, 0)
-    return inv_perspective
-
-def get_curve(img, leftx, rightx):
-    ploty = np.linspace(0, img.shape[1]-1, img.shape[1])
-    y_eval = np.max(ploty)
-    ym_per_pix = 37.5/ img.shape[1] # meters per pixel in y dimension
-    xm_per_pix = 3.5/ img.shape[1] # meters per pixel in x dimension
-
-    # Fit new polynomials to x,y in world space
-    left_fit_cr = np.polyfit(ploty*ym_per_pix, leftx*xm_per_pix, 2)
-    right_fit_cr = np.polyfit(ploty*ym_per_pix, rightx*xm_per_pix, 2)
-    # Calculate the new radii of curvature
-    left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
-    right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
-
-    car_pos = img.shape[1]/2
-    l_fit_x_int = left_fit_cr[0]*img.shape[0]**2 + left_fit_cr[1]*img.shape[0] + left_fit_cr[2]
-    r_fit_x_int = right_fit_cr[0]*img.shape[0]**2 + right_fit_cr[1]*img.shape[0] + right_fit_cr[2]
-    lane_center_position = (r_fit_x_int + l_fit_x_int) /2
-    center = (car_pos - lane_center_position) * xm_per_pix / 10
-    # Now our radius of curvature is in meters
-    return (left_curverad, right_curverad, center)
 
 def vid_pipeline(cap):
 
@@ -225,36 +192,72 @@ def vid_pipeline(cap):
     kernel = np.ones((7,7),np.uint8)
     eroded = cv2.erode(mask, kernel, iterations = 1) # eroding + dilating = opening
     wscale = cv2.dilate(eroded, kernel, iterations = 1)
-    ret,thresh = cv2.threshold(wscale,128,255,cv2.THRESH_BINARY_INV) # thresholding the image //THRESH_BINARY_INV
+    ret,thresh = cv2.threshold(wscale, 128, 255, cv2.THRESH_BINARY_INV) # thresholding the image //THRESH_BINARY_INV
 
     # Perspective warp
     rheight, rwidth = thresh.shape[:2]
-    dst_size = (rheight,rwidth)
-    dst = np.float32([(0,0), (1,0), (0,1), (1,1)])
-    src = np.float32([(300,0), (1700,0), (300,rheight), (1700,rheight)]) # Find suitable Parameters
-
-    warped_img = perspective_warp(thresh, dst_size, src, dst)
+    dst_size =(rheight,rwidth) #+roi_x +roi_y
+    src = np.float32([(250,0), (1500,0), (1450,1023-(roi_y+1)), (250,1034-(roi_y+1))])
+    dst = np.float32([(0,0), (1, 0), (1,1), (0,1)])
+    warped_img, M = perspective_warp(thresh, dst_size, src, dst)
 
     # Sliding Window Search
     out_img, curves, lanes, ploty = sliding_window(warped_img)
 
-    #plt.imshow(out_img)
-    #plt.plot(curves[0], ploty, color='yellow', linewidth=1)
-    #plt.plot(curves[1], ploty, color='yellow', linewidth=1)
-    #plt.show()
+    # Fitted curves as points
+    warp_zero = np.zeros_like(out_img).astype(np.uint8)
+    color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+    left = np.array([np.transpose(np.vstack([curves[0], ploty]))])
+    right = np.array([np.flipud(np.transpose(np.vstack([curves[1], ploty])))])
+    points = np.hstack((left+roi_y, right+roi_y))
 
-    #curverad=get_curve(Roi, curves[0],curves[1])
-    #print(curverad)
+    # Fitted curves as points
+    color_img = np.zeros_like(frame)
+    #cv2.fillPoly(color_img, np.int_(left+roi_y), (255,0,0))
+    #cv2.fillPoly(color_img, np.int_(right+roi_y), (255,0,0))
+    cv2.fillConvexPoly(color_img, np.int_(points), (255, 93, 74), lineType=8, shift=0) #
 
-    #Roi_c = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
-    img_ = draw_lanes(thresh, curves[0], curves[1])
+    dst_size_i = (width, height) #+roi_x +roi_y
+    src_i = np.float32([(0,0), (1, 0), (0,1), (1,1)])
+    dst_i = np.float32([(0,0), (1, 0), (0,1), (1,1)])
+    newwarp = inv_perspective_warp(color_img, dst_size_i, src_i, dst_i)
 
-    #plt.imshow(img_, cmap='hsv')
-    #plt.show()
-    return img_
+    # Combine the result with the original image
+    result = cv2.addWeighted(frame, 1, newwarp, 0.9, 0)
+
+    # Plotting the data
+    # f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(20, 5))
+    # ax1.set_title('Original', fontsize=10)
+    # ax1.xaxis.set_visible(False)
+    # ax1.yaxis.set_visible(False)
+    # ax1.imshow(frame, aspect="auto")
+    # camera = Camera(f)
+    # ax2.set_title('Filter+Perspective Tform', fontsize=10)
+    # ax2.xaxis.set_visible(False)
+    # ax2.yaxis.set_visible(False)
+    # ax2.imshow(warped_img, aspect="auto")
+    #
+    # ax3.plot(curves[0], ploty, color='yellow', linewidth=5)
+    # ax3.plot(curves[1], ploty, color='yellow', linewidth=5)
+    # ax3.xaxis.set_visible(False)
+    # ax3.yaxis.set_visible(False)
+    # ax3.set_title('Sliding window+Curve Fit', fontsize=10)
+    # ax3.imshow(out_img, aspect="auto")
+    #
+    # ax4.set_title('Overlay Lanes', fontsize=10)
+    # ax4.xaxis.set_visible(False)
+    # ax4.yaxis.set_visible(False)
+    # ax4.imshow(result, aspect="auto")
+    #
+    # # plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
+    # animation.FuncAnimation(f, ax1, interval=2, blit=True)
+    # animation = camera.animate()
+    # plt.show()
+
+    return out_img, result
 
 def lane_detector():
-  rospy.init_node('lane_detector')
+  rospy.init_node('lane_detector', anonymous=True)
 
   home = expanduser("~/ICRA_2020/wheel_tracks.avi")
   cap = cv2.VideoCapture(home)
@@ -267,9 +270,18 @@ def lane_detector():
   while(cap.isOpened()):
 
     while not rospy.is_shutdown():
-      output = vid_pipeline(cap)
+      warp_img, output = vid_pipeline(cap)
+
       # Display the resulting frame
-      cv2.imshow('Frame',output)
+      cv2.startWindowThread()
+      cv2.namedWindow('preview',cv2.WINDOW_NORMAL)
+      cv2.resizeWindow('preview', 800,800)
+      #cv2.imshow('Frame', output)
+
+      fheight, fwidth = output.shape[:2]
+      warp_img = cv2.resize(warp_img,(int(fwidth),int(fheight)))
+      numpy_horizontal = np.hstack((warp_img, output))
+      cv2.imshow('preview', numpy_horizontal)
 
       # Press Q on keyboard to  exit
       if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -284,9 +296,7 @@ def lane_detector():
 
       # Closes all the frames
       cv2.destroyAllWindows()
-      #cv2.startWindowThread()
-      #cv2.namedWindow("preview")
-      #rospy.loginfo("aagadgv")
+
 
 if __name__ == '__main__':
    try:
