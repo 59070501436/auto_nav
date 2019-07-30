@@ -32,6 +32,8 @@ right_a, right_b, right_c = [],[],[]
 
 def perspective_warp(img, dst_size, src, dst): # Choose the four vertices
 
+    img_size = np.float32([(img.shape[1],img.shape[0])])
+    src = src* img_size
     # For destination points, I'm arbitrarily choosing some points to be
     # a nice fit for displaying our warped result
     # again, not exact, but close enough for our purposes
@@ -42,10 +44,10 @@ def perspective_warp(img, dst_size, src, dst): # Choose the four vertices
     #Minv = cv2.getPerspectiveTransform(dst, src)
     # Warp the image using OpenCV warpPerspective()
     warped = cv2.warpPerspective(img, M, dst_size)
-    #dst_size1 = (580,1920)
+    #dst_size1 = (1920,580)
     #unwarped = cv2.warpPerspective(warped, Minv, dst_size1)
 
-    return warped, M  #, Minv, unwarped
+    return warped, M #, Minv, unwarped
 
 def inv_perspective_warp(img, dst_size, src, dst):
     img_size = np.float32([(img.shape[1],img.shape[0])])
@@ -58,9 +60,9 @@ def inv_perspective_warp(img, dst_size, src, dst):
     M = cv2.getPerspectiveTransform(src, dst)
     # Warp the image using OpenCV warpPerspective()
     warped = cv2.warpPerspective(img, M, dst_size)
-    return warped
+    return warped, M
 
-def sliding_window(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
+def sliding_window(img, nwindows=8, margin=50, minpix = 1, draw_windows=True):
     global left_a, left_b, left_c,right_a, right_b, right_c
     left_fit_= np.empty(3)
     right_fit_ = np.empty(3)
@@ -165,6 +167,7 @@ def sliding_window(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
 
     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 100]
     out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 100, 255]
+    #cv2.circle(out_img,(500,500), 65, (0,0,255), -1) #int(out_img.shape[0]/2),int(out_img.shape[1]/2)
 
     return out_img, (left_fitx, right_fitx), (left_fit_, right_fit_), ploty
 
@@ -196,65 +199,53 @@ def vid_pipeline(cap):
 
     # Perspective warp
     rheight, rwidth = thresh.shape[:2]
-    dst_size =(rheight,rwidth) #+roi_x +roi_y
-    src = np.float32([(250,0), (1500,0), (1450,1023-(roi_y+1)), (250,1034-(roi_y+1))])
-    dst = np.float32([(0,0), (1, 0), (1,1), (0,1)])
-    warped_img, M = perspective_warp(thresh, dst_size, src, dst)
+    dst_size =(rheight,rwidth)
+    src=np.float32([(0.15,0), (0.85,0), (0.15,1), (0.85,1)])
+    dst=np.float32([(0,0), (1,0), (0,1), (1,1)])
+    warped_img, M  = perspective_warp(thresh, dst_size, src, dst)
 
     # Sliding Window Search
     out_img, curves, lanes, ploty = sliding_window(warped_img)
 
-    # Fitted curves as points
-    warp_zero = np.zeros_like(out_img).astype(np.uint8)
-    color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
-    left = np.array([np.transpose(np.vstack([curves[0], ploty]))])
-    right = np.array([np.flipud(np.transpose(np.vstack([curves[1], ploty])))])
-    points = np.hstack((left+roi_y, right+roi_y))
+    #out_img_c = cv2.cvtColor(out_img, cv2.COLOR_GRAY2BGR)
+    dst_size =(rwidth,rheight) #+roi_x +roi_y
+    #src=np.float32([(0,0), (1,0), (0,1), (1,1)])
+    #dst=np.float32([(0,0), (1,0), (0,1), (1,1)])
+    invwarp, Minv = inv_perspective_warp(out_img, dst_size, dst, src)
+
+    #cv2.circle(out_img, (500,500), 65, (0,0,255), -1) #int(out_img.shape[0]/2),int(out_img.shape[1]/2)
+    #dst_size_i = (width, height-(roi_y)) #+roi_x +roi_y
+    #src_i = np.float32([(0,0), (1, 0), (0,1), (1,1)])
+    #dst_i = np.float32([(450,0), (1600,0), (1600,1023-(roi_y+1)), (450,1034-(roi_y+1))])
+    #np.float32([(0,0), (1, 0), (0,1), (1,1)])
+    #invwarp = inv_perspective_warp(warped_img, dst_size_i, src_i, dst_i)
+    #print invwarp.shape, Roi.shape
 
     # Fitted curves as points
-    color_img = np.zeros_like(frame)
+    #warp_zero = np.zeros_like(out_img).astype(np.uint8)
+    #color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+    #left = np.array([np.transpose(np.vstack([curves[0], ploty]))])
+    #right = np.array([np.flipud(np.transpose(np.vstack([curves[1], ploty])))])
+    #points = np.hstack((left+roi_y, right+roi_y))
+
+    # Fitted curves as points
+    #color_img = np.zeros_like(frame)
     #cv2.fillPoly(color_img, np.int_(left+roi_y), (255,0,0))
     #cv2.fillPoly(color_img, np.int_(right+roi_y), (255,0,0))
-    cv2.fillConvexPoly(color_img, np.int_(points), (255, 93, 74), lineType=8, shift=0) #
+    #cv2.fillConvexPoly(color_img, np.int_(points), (255, 93, 74), lineType=8, shift=0) #
 
-    dst_size_i = (width, height) #+roi_x +roi_y
-    src_i = np.float32([(0,0), (1, 0), (0,1), (1,1)])
-    dst_i = np.float32([(0,0), (1, 0), (0,1), (1,1)])
-    newwarp = inv_perspective_warp(color_img, dst_size_i, src_i, dst_i)
+    #cv2.circle(color_img, (500+roi_y,500), 65, (0,0,255), -1) #int(out_img.shape[0]/2),int(out_img.shape[1]/2)
+
+    #dst_size_i = (width, height) #+roi_x +roi_y
+    #src_i = np.float32([(0,0), (1, 0), (0,1), (1,1)])
+    #dst_i = np.float32([(0,0), (1, 0), (0,1), (1,1)])
+    #newwarp = inv_perspective_warp(color_img, dst_size_i, src_i, dst_i)
 
     # Combine the result with the original image
-    result = cv2.addWeighted(frame, 1, newwarp, 0.9, 0)
+    #invwarp_c = cv2.cvtColor(invwarp, cv2.COLOR_GRAY2BGR)
+    result = cv2.addWeighted(Roi, 1, invwarp, 0.9, 0) #newwarp
 
-    # Plotting the data
-    # f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(20, 5))
-    # ax1.set_title('Original', fontsize=10)
-    # ax1.xaxis.set_visible(False)
-    # ax1.yaxis.set_visible(False)
-    # ax1.imshow(frame, aspect="auto")
-    # camera = Camera(f)
-    # ax2.set_title('Filter+Perspective Tform', fontsize=10)
-    # ax2.xaxis.set_visible(False)
-    # ax2.yaxis.set_visible(False)
-    # ax2.imshow(warped_img, aspect="auto")
-    #
-    # ax3.plot(curves[0], ploty, color='yellow', linewidth=5)
-    # ax3.plot(curves[1], ploty, color='yellow', linewidth=5)
-    # ax3.xaxis.set_visible(False)
-    # ax3.yaxis.set_visible(False)
-    # ax3.set_title('Sliding window+Curve Fit', fontsize=10)
-    # ax3.imshow(out_img, aspect="auto")
-    #
-    # ax4.set_title('Overlay Lanes', fontsize=10)
-    # ax4.xaxis.set_visible(False)
-    # ax4.yaxis.set_visible(False)
-    # ax4.imshow(result, aspect="auto")
-    #
-    # # plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
-    # animation.FuncAnimation(f, ax1, interval=2, blit=True)
-    # animation = camera.animate()
-    # plt.show()
-
-    return out_img, result
+    return out_img, result #result
 
 def lane_detector():
   rospy.init_node('lane_detector', anonymous=True)
@@ -270,18 +261,22 @@ def lane_detector():
   while(cap.isOpened()):
 
     while not rospy.is_shutdown():
-      warp_img, output = vid_pipeline(cap)
+      warp_img, output = vid_pipeline(cap) #output
 
       # Display the resulting frame
       cv2.startWindowThread()
-      cv2.namedWindow('preview',cv2.WINDOW_NORMAL)
+      cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
       cv2.resizeWindow('preview', 800,800)
       #cv2.imshow('Frame', output)
 
-      fheight, fwidth = output.shape[:2]
-      warp_img = cv2.resize(warp_img,(int(fwidth),int(fheight)))
-      numpy_horizontal = np.hstack((warp_img, output))
-      cv2.imshow('preview', numpy_horizontal)
+      #fheight, fwidth = output.shape[:2]
+      #print warp_img.shape, output.shape
+      #warp_img = cv2.resize(warp_img,(int(fwidth),int(fheight)))
+      #numpy_horizontal = np.hstack((warp_img, output))
+      cv2.imshow('preview', warp_img)
+      cv2.namedWindow('preview1', cv2.WINDOW_NORMAL)
+      cv2.resizeWindow('preview1', 800,800)
+      cv2.imshow('preview1', output)
 
       # Press Q on keyboard to  exit
       if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -297,6 +292,34 @@ def lane_detector():
       # Closes all the frames
       cv2.destroyAllWindows()
 
+      # Plotting the data
+      # f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(20, 5))
+      # ax1.set_title('Original', fontsize=10)
+      # ax1.xaxis.set_visible(False)
+      # ax1.yaxis.set_visible(False)
+      # ax1.imshow(frame, aspect="auto")
+      # camera = Camera(f)
+      # ax2.set_title('Filter+Perspective Tform', fontsize=10)
+      # ax2.xaxis.set_visible(False)
+      # ax2.yaxis.set_visible(False)
+      # ax2.imshow(warped_img, aspect="auto")
+      #
+      # ax3.plot(curves[0], ploty, color='yellow', linewidth=5)
+      # ax3.plot(curves[1], ploty, color='yellow', linewidth=5)
+      # ax3.xaxis.set_visible(False)
+      # ax3.yaxis.set_visible(False)
+      # ax3.set_title('Sliding window+Curve Fit', fontsize=10)
+      # ax3.imshow(out_img, aspect="auto")
+      #
+      # ax4.set_title('Overlay Lanes', fontsize=10)
+      # ax4.xaxis.set_visible(False)
+      # ax4.yaxis.set_visible(False)
+      # ax4.imshow(result, aspect="auto")
+      #
+      # # plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
+      # animation.FuncAnimation(f, ax1, interval=2, blit=True)
+      # animation = camera.animate()
+      # plt.show()
 
 if __name__ == '__main__':
    try:
