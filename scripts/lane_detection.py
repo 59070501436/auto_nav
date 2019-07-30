@@ -17,7 +17,7 @@ from os.path import expanduser
 #import matplotlib.animation as animation
 
 roi_x = 0
-roi_y = 500
+roi_y = 400
 max_value_H = 360/2
 max_value = 255
 low_H = 0
@@ -167,7 +167,6 @@ def sliding_window(img, nwindows=8, margin=50, minpix = 1, draw_windows=True):
 
     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 100]
     out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 100, 255]
-    #cv2.circle(out_img,(500,500), 65, (0,0,255), -1) #int(out_img.shape[0]/2),int(out_img.shape[1]/2)
 
     return out_img, (left_fitx, right_fitx), (left_fit_, right_fit_), ploty
 
@@ -207,45 +206,26 @@ def vid_pipeline(cap):
     # Sliding Window Search
     out_img, curves, lanes, ploty = sliding_window(warped_img)
 
-    #out_img_c = cv2.cvtColor(out_img, cv2.COLOR_GRAY2BGR)
-    dst_size =(rwidth,rheight) #+roi_x +roi_y
-    #src=np.float32([(0,0), (1,0), (0,1), (1,1)])
-    #dst=np.float32([(0,0), (1,0), (0,1), (1,1)])
+    # Fitted curves as points
+    warp_zero = np.zeros_like(out_img).astype(np.uint8)
+    color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+    left = np.array([np.transpose(np.vstack([curves[0], ploty]))])
+    right = np.array([np.flipud(np.transpose(np.vstack([curves[1], ploty])))])
+    points = np.hstack((left, right))
+
+    # Fitted curves as points
+    #color_img = np.zeros_like(Roi)
+    #cv2.fillConvexPoly(out_img, np.int_(points), (255, 255, 0), lineType=8, shift=0)
+
+    dst_size =(rwidth, rheight) #+roi_x +roi_y
     invwarp, Minv = inv_perspective_warp(out_img, dst_size, dst, src)
 
-    #cv2.circle(out_img, (500,500), 65, (0,0,255), -1) #int(out_img.shape[0]/2),int(out_img.shape[1]/2)
-    #dst_size_i = (width, height-(roi_y)) #+roi_x +roi_y
-    #src_i = np.float32([(0,0), (1, 0), (0,1), (1,1)])
-    #dst_i = np.float32([(450,0), (1600,0), (1600,1023-(roi_y+1)), (450,1034-(roi_y+1))])
-    #np.float32([(0,0), (1, 0), (0,1), (1,1)])
-    #invwarp = inv_perspective_warp(warped_img, dst_size_i, src_i, dst_i)
-    #print invwarp.shape, Roi.shape
-
-    # Fitted curves as points
-    #warp_zero = np.zeros_like(out_img).astype(np.uint8)
-    #color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
-    #left = np.array([np.transpose(np.vstack([curves[0], ploty]))])
-    #right = np.array([np.flipud(np.transpose(np.vstack([curves[1], ploty])))])
-    #points = np.hstack((left+roi_y, right+roi_y))
-
-    # Fitted curves as points
-    #color_img = np.zeros_like(frame)
-    #cv2.fillPoly(color_img, np.int_(left+roi_y), (255,0,0))
-    #cv2.fillPoly(color_img, np.int_(right+roi_y), (255,0,0))
-    #cv2.fillConvexPoly(color_img, np.int_(points), (255, 93, 74), lineType=8, shift=0) #
-
-    #cv2.circle(color_img, (500+roi_y,500), 65, (0,0,255), -1) #int(out_img.shape[0]/2),int(out_img.shape[1]/2)
-
-    #dst_size_i = (width, height) #+roi_x +roi_y
-    #src_i = np.float32([(0,0), (1, 0), (0,1), (1,1)])
-    #dst_i = np.float32([(0,0), (1, 0), (0,1), (1,1)])
-    #newwarp = inv_perspective_warp(color_img, dst_size_i, src_i, dst_i)
-
     # Combine the result with the original image
-    #invwarp_c = cv2.cvtColor(invwarp, cv2.COLOR_GRAY2BGR)
-    result = cv2.addWeighted(Roi, 1, invwarp, 0.9, 0) #newwarp
+    frame[roi_y:height,roi_x:width] = cv2.addWeighted(frame[roi_y:height,roi_x:width],
+                                                                          1, invwarp, 0.9, 0)
+    result = frame
 
-    return out_img, result #result
+    return out_img, result #invwarp
 
 def lane_detector():
   rospy.init_node('lane_detector', anonymous=True)
