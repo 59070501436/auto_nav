@@ -1,4 +1,9 @@
 
+#warp_zero = np.zeros_like(out_img).astype(np.uint8)
+#color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+#color_img = np.zeros_like(Roi)
+# Fitted curves as points
+#cv2.fillConvexPoly(out_img, np.int_(points), (255, 255, 0), lineType=8, shift=0)
 #plt.imshow(out_img)
 #plt.plot(curves[0], ploty, color='yellow', linewidth=1)
 #plt.plot(curves[1], ploty, color='yellow', linewidth=1)
