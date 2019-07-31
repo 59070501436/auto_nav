@@ -161,7 +161,7 @@ def sliding_window(img, nwindows=15, margin=50, minpix=1, draw_windows=True):
     right_fit_[2] = np.mean(right_c[-10:])
 
     # Generate x and y values for plotting
-    ploty = np.linspace(0, img.shape[0]-1, img.shape[0] )
+    ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
     left_fitx = left_fit_[0]*ploty**2 + left_fit_[1]*ploty + left_fit_[2]
     right_fitx = right_fit_[0]*ploty**2 + right_fit_[1]*ploty + right_fit_[2]
 
@@ -206,51 +206,40 @@ def vid_pipeline(cap):
     # Sliding Window Search
     out_img, curves, lanes, ploty = sliding_window(warped_img)
 
-    #plt.imshow(out_img)
-    #plt.plot(curves[0], ploty, color='yellow', linewidth=1)
-    #plt.plot(curves[1], ploty, color='yellow', linewidth=1)
-    #plt.plot((curves[0]+curves[1]/2), ploty, color='red', linewidth=1)
-    #plt.show()
-
-
     # Fitted curves as points
     leftLane = np.array([np.transpose(np.vstack([curves[0], ploty]))])
     rightLane = np.array([np.flipud(np.transpose(np.vstack([curves[1], ploty])))])
     points = np.hstack((leftLane, rightLane))
 
-    #curve = leftLane
-    #curve = np.array([[0, 0], [5, 5], [50, 50], [100, 100]])
-    #print leftLane[0]
-    curve = np.array([curves[0], ploty])
-    print curve[0][0], curve[0][1]
+    leftLane1 = leftLane[0].astype(int)
+    rightLane1 = rightLane[0].astype(int)
 
-    #cv2.polylines(out_img, [curve], 1, (0,255,255))
-    #curve.convertTo(curve, CV_32S) #adapt type for polylines
+    cv2.polylines(out_img, [leftLane1], 0, (0,255,255), thickness=5, lineType=8, shift=0)
+    cv2.polylines(out_img, [rightLane1], 0, (0,255,255), thickness=5, lineType=8, shift=0)
+    cv2.polylines(out_img, [(leftLane1+rightLane1)/2], 0, (255,0,255), thickness=5, lineType=8, shift=0)
 
-    midPoints = []
+    #midPoints = []
 
-    if len(leftLane[0]) > len(rightLane[0]):
-        longerLane = leftLane
-        shorterLane = rightLane
-    else:
-        longerLane = rightLane
-        shorterLane = leftLane
-        #adjust = -adjust
+    #if len(leftLane[0]) > len(rightLane[0]):
+        #longerLane = leftLane
+        #shorterLane = rightLane
+    #else:
+        #longerLane = rightLane
+        #shorterLane = leftLane
 
     # As long as there are still points in each lane, calculate the midpoint of lane by averaging corresponding
     # points
-    for i in xrange(0, len(shorterLane[0])):
-            sumPoint = np.add(longerLane[0][i], shorterLane[0][i])
-            avgPoint = np.divide(sumPoint, 2)
-            midPoints.append(avgPoint)
-            cv2.circle(out_img, (int(avgPoint[0]), int(avgPoint[1])), 8, (0, 255, 255), -1)
+    #for i in xrange(0, len(shorterLane[0])):
+            #sumPoint = np.add(longerLane[0][i], shorterLane[0][i])
+            #avgPoint = np.divide(sumPoint, 2)
+            #midPoints.append(avgPoint)
+            #cv2.circle(out_img, (int(avgPoint[0]), int(avgPoint[1])), 8, (0, 255, 255), -1)
     # Once you run out of corresponding points, simply horizontally offset the remaining points
     #for i in xrange(len(shorterLane[0]), len(longerLane[0])):
         #midPoints.append(np.add(longerLane[0][i], [0, adjust]))
 
     #midPoints = [list(imap(int, midPoint)) for midPoint in midPoints]
     #m_x, m_y = midPoints[0]
-
 
     dst_size =(rwidth, rheight)
     invwarp, Minv = inv_perspective_warp(out_img, dst_size, dst, src)
@@ -288,9 +277,9 @@ def lane_detector():
       #print warp_img.shape, output.shape
       #warp_img = cv2.resize(warp_img,(int(fwidth),int(fheight)))
       #numpy_horizontal = np.hstack((warp_img, output))
-      #cv2.namedWindow('preview1', cv2.WINDOW_NORMAL)
-      #cv2.resizeWindow('preview1', 800,800)
-      #cv2.imshow('preview1', output)
+      cv2.namedWindow('preview1', cv2.WINDOW_NORMAL)
+      cv2.resizeWindow('preview1', 800,800)
+      cv2.imshow('preview1', output)
 
       # Press Q on keyboard to  exit
       if cv2.waitKey(25) & 0xFF == ord('q'):
