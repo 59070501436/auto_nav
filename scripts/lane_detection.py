@@ -227,6 +227,22 @@ def vid_pipeline(img_frame):
 
     return midLane1, out_img, result #invwarp
 
+def camera2world(x_c, t_c, R_c):
+ # ray in world coordinates
+ x_c_q = np.array([0,x_c[0],x_c[1],x_c[2]])
+ x_wq = np.matmul(R_c, x_c_q ,np.conj(R_c))
+ x_w = np.array([x_wq[0],x_wq[1],x_wq[2]])
+
+ # distance to the plane
+ ## d = dot((t_p - t_c),n_p)/dot(x_w,n_p)
+ ## simplified expression assuming plane t_p = [0 0 0]; n_p = [0 0 1];
+ d = -t_c[2]/x_w[2]
+
+ # intersection point
+ x_p = np.add(d*x_w,t_c)
+
+ return x_p
+
 def lane_detector():
   topic = 'test_poses'
   publisher = rospy.Publisher(topic, PoseArray)
@@ -244,10 +260,12 @@ def lane_detector():
   # Read until video is completed
   while(cap.isOpened()):
 
+   # Capture frame-by-frame
+   ret, frame = cap.read()
+   if ret == True:
+
     while not rospy.is_shutdown():
-     # Capture frame-by-frame
-     ret, frame = cap.read()
-     if ret == True:
+
 
       centerLine, warp_img, output = vid_pipeline(frame)
 
@@ -257,19 +275,32 @@ def lane_detector():
          continue
 
       #print trans, rot
-      p_c = np.array([centerLine[0][0], centerLine[0][1], 1])
-      K = np.array([[1, 2, 3], [3, 4, 5], [1, 2, 3]])
-      Kinv = inv(K)
+      # Camera Parmeters
+      fx = 1065.112876974344
+      fy = 1065.112876974344
+      x0 = 960.5
+      y0 = 540.5
 
-      # Used to publish waypoints as pose array so that you can see them in rviz, etc.
+      # Calcuate 3D World Point from 2D Image Point
+      p_c = np.array([centerLine[0][0], centerLine[0][1], 1])
+      K = np.array(([fx,0,x0],[0,fy,y0],[0,0,1]))
+      K_inv = np.linalg.inv(K)
+      x_c = np.matmul(K_inv, p_c)
+      t_c = np.array([trans[0], trans[1], trans[2]])
+      R_c = np.array([rot[0], rot[1], rot[2], rot[3]])
+      x_p = camera2world(x_c, t_c, R_c)
+
+      #print x_p
+
+      # # Used to publish waypoints as pose array so that you can see them in rviz, etc.
       poses = PoseArray()
       poses.header.frame_id = "map"
       poses.header.stamp = rospy.Time.now()
 
       pose = Pose()
-      pose.position.x = centerLine[0][0]
-      pose.position.y = centerLine[0][1]
-      pose.position.z = 0
+      pose.position.x = x_p[1]
+      pose.position.y = x_p[0]
+      pose.position.z = x_p[2]
       pose.orientation.x = 0
       pose.orientation.y = 0
       pose.orientation.z = 0
@@ -277,6 +308,20 @@ def lane_detector():
       poses.poses.append(pose)
 
       publisher.publish(poses)
+
+      # Press Q on keyboard to  exit
+      if cv2.waitKey(25) & 0xFF == ord('q'):
+          break
+
+      # Break the loop
+      else:
+          break
+
+      # When everything done, release the video capture object
+      cap.release()
+
+      # Closes all the frames
+      cv2.destroyAllWindows()
 
       # Display the resulting frame
       #cv2.startWindowThread()
@@ -292,20 +337,6 @@ def lane_detector():
       #cv2.namedWindow('preview1', cv2.WINDOW_NORMAL)
       #cv2.resizeWindow('preview1', 800,800)
       #cv2.imshow('preview1', output)
-
-      # Press Q on keyboard to  exit
-      if cv2.waitKey(25) & 0xFF == ord('q'):
-          break
-
-      # Break the loop
-      else:
-          break
-
-      # When everything done, release the video capture object
-      cap.release()
-
-      # Closes all the frames
-      cv2.destroyAllWindows()
 
       # Plotting the data
       # f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(20, 5))
