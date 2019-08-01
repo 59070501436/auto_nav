@@ -10,11 +10,11 @@ import glob
 import matplotlib.pyplot as plt
 import pickle
 import math
+import tf
 from numpy import linalg as LA
 from moviepy.editor import VideoFileClip
 from os.path import expanduser
-#from matplotlib.lines import Line2D
-#import matplotlib.animation as animation
+from geometry_msgs.msg import Pose, PoseArray
 
 roi_x = 0
 roi_y = 300
@@ -170,14 +170,10 @@ def sliding_window(img, nwindows=15, margin=50, minpix=1, draw_windows=True):
 
     return out_img, (left_fitx, right_fitx), (left_fit_, right_fit_), ploty
 
-def vid_pipeline(cap):
-
-   # Capture frame-by-frame
-   ret, frame = cap.read()
-   if ret == True:
+def vid_pipeline(img_frame):
 
     # Convert BGR to HSV
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(img_frame, cv2.COLOR_BGR2HSV)
     height, width = hsv.shape[:2]
 
     # Getting ROI
@@ -210,49 +206,33 @@ def vid_pipeline(cap):
     leftLane = np.array([np.transpose(np.vstack([curves[0], ploty]))])
     rightLane = np.array([np.flipud(np.transpose(np.vstack([curves[1], ploty])))])
     points = np.hstack((leftLane, rightLane))
+    curves_m = (curves[0]+curves[1])/2
+    midLane = np.array([np.transpose(np.vstack([curves_m, ploty]))])
 
     leftLane1 = leftLane[0].astype(int)
     rightLane1 = rightLane[0].astype(int)
+    midLane1 = midLane[0].astype(int)
 
     cv2.polylines(out_img, [leftLane1], 0, (0,255,255), thickness=5, lineType=8, shift=0)
     cv2.polylines(out_img, [rightLane1], 0, (0,255,255), thickness=5, lineType=8, shift=0)
-    cv2.polylines(out_img, [(leftLane1+rightLane1)/2], 0, (255,0,255), thickness=5, lineType=8, shift=0)
-
-    #midPoints = []
-
-    #if len(leftLane[0]) > len(rightLane[0]):
-        #longerLane = leftLane
-        #shorterLane = rightLane
-    #else:
-        #longerLane = rightLane
-        #shorterLane = leftLane
-
-    # As long as there are still points in each lane, calculate the midpoint of lane by averaging corresponding
-    # points
-    #for i in xrange(0, len(shorterLane[0])):
-            #sumPoint = np.add(longerLane[0][i], shorterLane[0][i])
-            #avgPoint = np.divide(sumPoint, 2)
-            #midPoints.append(avgPoint)
-            #cv2.circle(out_img, (int(avgPoint[0]), int(avgPoint[1])), 8, (0, 255, 255), -1)
-    # Once you run out of corresponding points, simply horizontally offset the remaining points
-    #for i in xrange(len(shorterLane[0]), len(longerLane[0])):
-        #midPoints.append(np.add(longerLane[0][i], [0, adjust]))
-
-    #midPoints = [list(imap(int, midPoint)) for midPoint in midPoints]
-    #m_x, m_y = midPoints[0]
+    cv2.polylines(out_img, [midLane1], 0, (255,0,255), thickness=5, lineType=8, shift=0)
 
     dst_size =(rwidth, rheight)
     invwarp, Minv = inv_perspective_warp(out_img, dst_size, dst, src)
 
     # Combine the result with the original image
-    frame[roi_y:height,roi_x:width] = cv2.addWeighted(frame[roi_y:height,roi_x:width],
-                                                                          1, invwarp, 0.9, 0)
-    result = frame
+    img_frame[roi_y:height,roi_x:width] = cv2.addWeighted(img_frame[roi_y:height,roi_x:width],
+                                                                       1, invwarp, 0.9, 0)
+    result = img_frame
 
-    return out_img, result #invwarp
+    return midLane1, out_img, result #invwarp
 
 def lane_detector():
+  topic = 'test_poses'
+  publisher = rospy.Publisher(topic, PoseArray)
   rospy.init_node('lane_detector', anonymous=True)
+
+  listener = tf.TransformListener()
 
   home = expanduser("~/ICRA_2020/wheel_tracks_ct.avi")
   cap = cv2.VideoCapture(home)
@@ -265,21 +245,53 @@ def lane_detector():
   while(cap.isOpened()):
 
     while not rospy.is_shutdown():
-      warp_img, output = vid_pipeline(cap) #output
+     # Capture frame-by-frame
+     ret, frame = cap.read()
+     if ret == True:
+
+      centerLine, warp_img, output = vid_pipeline(frame)
+
+      try:
+        (trans,rot) = listener.lookupTransform('map', 'kinect2_rgb_optical_frame', rospy.Time(0))
+      except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+         continue
+
+      #print trans, rot
+      p_c = np.array([centerLine[0][0], centerLine[0][1], 1])
+      K = np.array([[1, 2, 3], [3, 4, 5], [1, 2, 3]])
+      Kinv = inv(K)
+
+      # Used to publish waypoints as pose array so that you can see them in rviz, etc.
+      poses = PoseArray()
+      poses.header.frame_id = "map"
+      poses.header.stamp = rospy.Time.now()
+
+      pose = Pose()
+      pose.position.x = centerLine[0][0]
+      pose.position.y = centerLine[0][1]
+      pose.position.z = 0
+      pose.orientation.x = 0
+      pose.orientation.y = 0
+      pose.orientation.z = 0
+      pose.orientation.w = 1
+      poses.poses.append(pose)
+
+      publisher.publish(poses)
 
       # Display the resulting frame
-      cv2.startWindowThread()
-      cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
-      cv2.resizeWindow('preview', 800,800)
-      cv2.imshow('preview', warp_img)
+      #cv2.startWindowThread()
+      #cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+      #cv2.resizeWindow('preview', 800,800)
+      #cv2.imshow('preview', warp_img)
 
       #fheight, fwidth = output.shape[:2]
       #print warp_img.shape, output.shape
       #warp_img = cv2.resize(warp_img,(int(fwidth),int(fheight)))
       #numpy_horizontal = np.hstack((warp_img, output))
-      cv2.namedWindow('preview1', cv2.WINDOW_NORMAL)
-      cv2.resizeWindow('preview1', 800,800)
-      cv2.imshow('preview1', output)
+
+      #cv2.namedWindow('preview1', cv2.WINDOW_NORMAL)
+      #cv2.resizeWindow('preview1', 800,800)
+      #cv2.imshow('preview1', output)
 
       # Press Q on keyboard to  exit
       if cv2.waitKey(25) & 0xFF == ord('q'):
