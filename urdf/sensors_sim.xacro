@@ -11,7 +11,7 @@
   <xacro:property name="kinect2_cam_py" value="0.0" />
   <xacro:property name="kinect2_cam_pz" value="1.75" /> #0.5
   <xacro:property name="kinect2_cam_or" value="0.0" />
-  <xacro:property name="kinect2_cam_op" value="1.0472" />  #0.785 #0.392 
+  <xacro:property name="kinect2_cam_op" value="1.0472" />  #0.785 #0.392
   <xacro:property name="kinect2_cam_oy" value="0.0" />
 
   <link name="${kinect2_name}_link">

@@ -15,7 +15,10 @@ from numpy import linalg as LA
 from moviepy.editor import VideoFileClip
 from os.path import expanduser
 from geometry_msgs.msg import Pose, PoseArray
+from sensor_msgs.msg import CameraInfo
 
+K = CameraInfo()
+cam_param_receive = False
 roi_x = 0
 roi_y = 300
 max_value_H = 360/2
@@ -29,6 +32,11 @@ high_V = 145
 
 left_a, left_b, left_c = [],[],[]
 right_a, right_b, right_c = [],[],[]
+
+def imagecaminfoCallback(data):
+    global cam_param_receive, K
+    K = data.K
+    cam_param_receive = True
 
 def perspective_warp(img, dst_size, src, dst): # Choose the four vertices
 
@@ -229,9 +237,15 @@ def vid_pipeline(img_frame):
 
 def camera2world(x_c, t_c, R_c):
  # ray in world coordinates
- x_c_q = np.array([0,x_c[0],x_c[1],x_c[2]])
- x_wq = np.matmul(R_c, x_c_q ,np.conj(R_c))
- x_w = np.array([x_wq[0],x_wq[1],x_wq[2]])
+ #x_c_q = np.array([0,x_c[0],x_c[1],x_c[2]])
+ #x_wq_o = np.matmul(R_c, x_c_q)
+
+ # R_c1 = np.array([[R_c[0]], [R_c[1]], [R_c[2]], [R_c[3]]])
+ x_c_q = np.array([[0.0], [x_c[0]], [x_c[1]], [x_c[2]]])
+
+ x_wq_o = np.multiply(R_c,x_c_q)
+ x_wq = np.multiply(x_wq_o,np.conj(R_c))
+ x_w = np.array([x_wq[1],x_wq[2],x_wq[3]])
 
  # distance to the plane
  ## d = dot((t_p - t_c),n_p)/dot(x_w,n_p)
@@ -239,7 +253,9 @@ def camera2world(x_c, t_c, R_c):
  d = -t_c[2]/x_w[2]
 
  # intersection point
- x_p = np.add(d*x_w,t_c)
+ x_p = np.add(x_w,t_c)
+
+ #print x_p
 
  return x_p
 
@@ -248,6 +264,9 @@ def lane_detector():
   publisher = rospy.Publisher(topic, PoseArray)
   rospy.init_node('lane_detector', anonymous=True)
 
+  rospy.Subscriber("/kinect2_camera/rgb/camera_info", CameraInfo, imagecaminfoCallback)
+
+  #rospy.spin()
   listener = tf.TransformListener()
 
   home = expanduser("~/ICRA_2020/wheel_tracks_ct.avi")
@@ -266,48 +285,53 @@ def lane_detector():
 
     while not rospy.is_shutdown():
 
+      #centerLine, warp_img, output = vid_pipeline(frame)
 
-      centerLine, warp_img, output = vid_pipeline(frame)
-
-      try:
-        (trans,rot) = listener.lookupTransform('map', 'kinect2_rgb_optical_frame', rospy.Time(0))
-      except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-         continue
-
-      #print trans, rot
       # Camera Parmeters
-      fx = 1065.112876974344
-      fy = 1065.112876974344
-      x0 = 960.5
-      y0 = 540.5
-
       # Calcuate 3D World Point from 2D Image Point
-      p_c = np.array([centerLine[0][0], centerLine[0][1], 1])
-      K = np.array(([fx,0,x0],[0,fy,y0],[0,0,1]))
-      K_inv = np.linalg.inv(K)
-      x_c = np.matmul(K_inv, p_c)
-      t_c = np.array([trans[0], trans[1], trans[2]])
-      R_c = np.array([rot[0], rot[1], rot[2], rot[3]])
-      x_p = camera2world(x_c, t_c, R_c)
+      #p_c = np.array([centerLine[0][0], centerLine[0][1], 1])
+      p_c = np.array([0, 0, 1])
+      global cam_param_receive, K
 
-      #print x_p
+      if cam_param_receive==True:
+        K_arr = list(K) # Convert tuple into array
+        K_f = np.reshape(K_arr, (3, 3)) # Resize array as 3*3 matrix
+        K_inv = np.linalg.inv(K_f)
+        x_c = np.matmul(K_inv, p_c)
 
-      # # Used to publish waypoints as pose array so that you can see them in rviz, etc.
-      poses = PoseArray()
-      poses.header.frame_id = "map"
-      poses.header.stamp = rospy.Time.now()
+        #rospy.loginfo(rospy.get_caller_id() + "I heard %s", K[0])
+        #cam_param_receive = False
 
-      pose = Pose()
-      pose.position.x = x_p[1]
-      pose.position.y = x_p[0]
-      pose.position.z = x_p[2]
-      pose.orientation.x = 0
-      pose.orientation.y = 0
-      pose.orientation.z = 0
-      pose.orientation.w = 1
-      poses.poses.append(pose)
+          #try:
+             #(trans,rot) = listener.lookupTransform('map', 'kinect2_rgb_optical_frame', rospy.Time(0))
+          #except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+             #continue
 
-      publisher.publish(poses)
+        trans = np.array([0.800, -0.010, 1.750])
+        rot = np.array([0.683, -0.683, 0.183, -0.184])
+
+        t_c = np.array([[trans[0]], [trans[1]], [trans[2]]])
+        R_c = np.array([[rot[0]], [rot[1]], [rot[2]], [rot[3]]])
+        x_p = camera2world(x_c, t_c, R_c)
+        print x_p
+
+
+        # # Used to publish waypoints as pose array so that you can see them in rviz, etc.
+        poses = PoseArray()
+        poses.header.frame_id = "map"
+        poses.header.stamp = rospy.Time.now()
+
+        pose = Pose()
+        pose.position.x = x_p[1]
+        pose.position.y = x_p[0]
+        pose.position.z = 0 #x_p[2]
+        pose.orientation.x = 0
+        pose.orientation.y = 0
+        pose.orientation.z = 0
+        pose.orientation.w = 1
+        poses.poses.append(pose)
+
+        publisher.publish(poses)
 
       # Press Q on keyboard to  exit
       if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -366,6 +390,7 @@ def lane_detector():
       # animation.FuncAnimation(f, ax1, interval=2, blit=True)
       # animation = camera.animate()
       # plt.show()
+      rospy.sleep(1)  # sleep for one second
 
 if __name__ == '__main__':
    try:
