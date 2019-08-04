@@ -144,7 +144,6 @@ include_directories(
 ## Declare a C++ library
 add_library(agri_costmap_layer_v2 src/agri_costmap_layer_v2.cpp)
 
-
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -180,9 +179,9 @@ add_dependencies(shadow_removal ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXP
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 install(PROGRAMS
-  scripts/curved_lane_detection.py
   scripts/lane_detection.py
-  scripts/test.py
+  scripts/lane_detection_image.py
+  scripts/lane_detection_video.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

@@ -20,13 +20,13 @@
   <arg name="pitch" default="0" if="$(arg simple_sim)"/>
   <arg name="yaw" default="0" if="$(arg simple_sim)"/>
 
-  <arg name="world_name" default="riseholme" if="$(arg simple_sim)"/> 
+  <arg name="world_name" default="$(find auto_nav)/worlds/riseholme.world" if="$(arg simple_sim)"/>
   <arg name="with_gui" default="true" if="$(arg simple_sim)" />
 
   <!-- Launch the Gazebo world.  -->
-  <include file="$(find auto_nav)/launch/world.launch" if="$(arg simple_sim)">
-   <arg name="world_name" value="$(arg world_name)"/>
-   <arg name="gui" value="$(arg with_gui)"/>
+  <include file="$(find gazebo_ros)/launch/empty_world.launch" if="$(arg simple_sim)">
+    <arg name="world_name" value="$(arg world_name)"/>
+    <arg name="gui" value="$(arg with_gui)" />
   </include>
 
   <!-- spawn robot in gazebo -->

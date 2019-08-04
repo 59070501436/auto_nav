@@ -14,17 +14,11 @@ import tf
 from numpy import linalg as LA
 from moviepy.editor import VideoFileClip
 from os.path import expanduser
-import geometry_msgs.msg
 from geometry_msgs.msg import Pose, PoseArray
 from sensor_msgs.msg import CameraInfo
-from sensor_msgs.msg import Image
-import tf2_ros
-import quaternion
 
 K = CameraInfo()
-rgb_img = Image()
 cam_param_receive = False
-img_receive = False
 roi_x = 0
 roi_y = 300
 max_value_H = 360/2
@@ -43,14 +37,6 @@ def imagecaminfoCallback(data):
     global cam_param_receive, K
     K = data.K
     cam_param_receive = True
-
-def imageCallback(ros_data):
-    global rgb_img, img_receive
-    #### direct conversion to CV2 ####
-    np_arr = np.fromstring(ros_data.data, np.uint8)
-    rgb_img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    img_receive = True
-    print img_receive
 
 def perspective_warp(img, dst_size, src, dst): # Choose the four vertices
 
@@ -250,11 +236,16 @@ def vid_pipeline(img_frame):
     return midLane1, out_img, result #invwarp
 
 def camera2world(x_c, t_c, R_c):
-
  # ray in world coordinates
- x_c_q = np.quaternion(0, x_c[0], x_c[1], x_c[2])
- x_wq = R_c*x_c_q*R_c.conjugate()
- x_w = np.array([x_wq.x,x_wq.y,x_wq.z])
+ #x_c_q = np.array([0,x_c[0],x_c[1],x_c[2]])
+ #x_wq_o = np.matmul(R_c, x_c_q)
+
+ # R_c1 = np.array([[R_c[0]], [R_c[1]], [R_c[2]], [R_c[3]]])
+ x_c_q = np.array([[0.0], [x_c[0]], [x_c[1]], [x_c[2]]])
+
+ x_wq_o = np.multiply(R_c,x_c_q)
+ x_wq = np.multiply(x_wq_o,np.conj(R_c))
+ x_w = np.array([x_wq[1],x_wq[2],x_wq[3]])
 
  # distance to the plane
  ## d = dot((t_p - t_c),n_p)/dot(x_w,n_p)
@@ -262,144 +253,144 @@ def camera2world(x_c, t_c, R_c):
  d = -t_c[2]/x_w[2]
 
  # intersection point
- x_wd = np.array([(x_w[0]*d),(x_w[1]*d),(x_w[2]*d)])
- x_p = np.add(x_wd, t_c)
+ x_p = np.add(x_w,t_c)
+
+ #print x_p
 
  return x_p
 
 def lane_detector():
-  publisher = rospy.Publisher('test_poses', PoseArray)
-  rospy.init_node('lane_detector', anonymous=True)
+  topic = 'test_poses'
+  publisher = rospy.Publisher(topic, PoseArray)
+  rospy.init_node('lane_detector_video', anonymous=True)
 
   rospy.Subscriber("/kinect2_camera/rgb/camera_info", CameraInfo, imagecaminfoCallback)
-  #rospy.Subscriber("/kinect2_camera/rgb/image_color_rect", Image, imageCallback)
 
+  #rospy.spin()
   listener = tf.TransformListener()
-  init_transform = geometry_msgs.msg.TransformStamped()
 
-  while not rospy.is_shutdown():
+  home = expanduser("~/ICRA_2020/wheel_tracks_ct.avi")
+  cap = cv2.VideoCapture(home)
+
+  # Check if camera opened successfully
+  if (cap.isOpened()== False):
+   print("Error opening video stream or file")
+
+  # Read until video is completed
+  while(cap.isOpened()):
+
+   # Capture frame-by-frame
+   ret, frame = cap.read()
+   if ret == True:
+
+    while not rospy.is_shutdown():
 
       #centerLine, warp_img, output = vid_pipeline(frame)
 
       # Camera Parmeters
       # Calcuate 3D World Point from 2D Image Point
       #p_c = np.array([centerLine[0][0], centerLine[0][1], 1])
-      global img_receive, cam_param_receive, K
+      p_c = np.array([0, 0, 1])
+      global cam_param_receive, K
 
-      try:
-        # wait for the transform to be found
-        #listener.waitForTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0),rospy.Duration(5.0))
-        (trans,rot) = listener.lookupTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0))
+      if cam_param_receive==True:
+        K_arr = list(K) # Convert tuple into array
+        K_f = np.reshape(K_arr, (3, 3)) # Resize array as 3*3 matrix
+        K_inv = np.linalg.inv(K_f)
+        x_c = np.matmul(K_inv, p_c)
 
-      except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-          continue
+        #rospy.loginfo(rospy.get_caller_id() + "I heard %s", K[0])
+        #cam_param_receive = False
 
-      t_c = np.array([[trans[0]], [trans[1]], [trans[2]]])
-      R_c = np.quaternion(rot[3], rot[0], rot[1], rot[2]) # Format: (w,x,y,z)
+          #try:
+             #(trans,rot) = listener.lookupTransform('map', 'kinect2_rgb_optical_frame', rospy.Time(0))
+          #except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+             #continue
 
-      if cam_param_receive==True: #cam_param_receive
+        trans = np.array([0.800, -0.010, 1.750])
+        rot = np.array([0.683, -0.683, 0.183, -0.184])
 
-          p_c = np.array([0, 0, 1])
-          K_arr = [[K[0], K[1], K[2]],
-                   [K[3], K[4], K[5]],
-                   [K[6], K[7], K[8]]]
+        t_c = np.array([[trans[0]], [trans[1]], [trans[2]]])
+        R_c = np.array([[rot[0]], [rot[1]], [rot[2]], [rot[3]]])
+        x_p = camera2world(x_c, t_c, R_c)
+        print x_p
 
-          x_c = np.linalg.inv(K_arr).dot(p_c)
-          norm_LA = LA.norm(x_c, axis=0)
-          x_c = x_c/norm_LA # Normalize the vector
 
-          #rospy.loginfo(rospy.get_caller_id() + "I heard %s", K[0])
-          #cam_param_receive = False
+        # # Used to publish waypoints as pose array so that you can see them in rviz, etc.
+        poses = PoseArray()
+        poses.header.frame_id = "map"
+        poses.header.stamp = rospy.Time.now()
 
-          x_p = camera2world(x_c, t_c, R_c)
+        pose = Pose()
+        pose.position.x = x_p[1]
+        pose.position.y = x_p[0]
+        pose.position.z = 0 #x_p[2]
+        pose.orientation.x = 0
+        pose.orientation.y = 0
+        pose.orientation.z = 0
+        pose.orientation.w = 1
+        poses.poses.append(pose)
 
-          #p_c1 = np.array([1080, 1920, 1])
-          #x_c1 = np.matmul(np.linalg.inv(K), p_c1)
-          #x_p1 = camera2world(x_c1, init_transform.transform.translation, R_c)
+        publisher.publish(poses)
 
-          #print x_p
+      # Press Q on keyboard to  exit
+      if cv2.waitKey(25) & 0xFF == ord('q'):
+          break
 
-          # # Used to publish waypoints as pose array so that you can see them in rviz, etc.
-          poses = PoseArray()
-          poses.header.frame_id = "map"
-          poses.header.stamp = rospy.Time.now()
+      # Break the loop
+      else:
+          break
 
-          pose = Pose()
-          pose.position.x = x_p[0]
-          pose.position.y = x_p[1]
-          pose.position.z = 0 #x_p[2]
-          pose.orientation.x = 0
-          pose.orientation.y = 0
-          pose.orientation.z = 0
-          pose.orientation.w = 1
-          poses.poses.append(pose)
+      # When everything done, release the video capture object
+      cap.release()
 
-          #pose1 = Pose()
-          #pose1.position.x = x_p1[0]
-          #pose1.position.y = x_p1[1]
-          #pose1.position.z = 0 #x_p[2]
-          #poses.poses.append(pose1)
+      # Closes all the frames
+      cv2.destroyAllWindows()
 
-          publisher.publish(poses)
+      # Display the resulting frame
+      #cv2.startWindowThread()
+      #cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+      #cv2.resizeWindow('preview', 800,800)
+      #cv2.imshow('preview', warp_img)
 
-          # Press Q on keyboard to  exit
-          #if cv2.waitKey(25) & 0xFF == ord('q'):
-              #break
+      #fheight, fwidth = output.shape[:2]
+      #print warp_img.shape, output.shape
+      #warp_img = cv2.resize(warp_img,(int(fwidth),int(fheight)))
+      #numpy_horizontal = np.hstack((warp_img, output))
 
-          # Break the loop
-          #else:
-              #break
+      #cv2.namedWindow('preview1', cv2.WINDOW_NORMAL)
+      #cv2.resizeWindow('preview1', 800,800)
+      #cv2.imshow('preview1', output)
 
-          # When everything done, release the video capture object
-          #cap.release()
-
-          # Closes all the frames
-          #cv2.destroyAllWindows()
-
-          # Display the resulting frame
-          #cv2.startWindowThread()
-          #cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
-          #cv2.resizeWindow('preview', 800,800)
-          #cv2.imshow('preview', warp_img)
-
-          #fheight, fwidth = output.shape[:2]
-          #print warp_img.shape, output.shape
-          #warp_img = cv2.resize(warp_img,(int(fwidth),int(fheight)))
-          #numpy_horizontal = np.hstack((warp_img, output))
-
-          #cv2.namedWindow('preview1', cv2.WINDOW_NORMAL)
-          #cv2.resizeWindow('preview1', 800,800)
-          #cv2.imshow('preview1', output)
-
-          # Plotting the data
-          # f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(20, 5))
-          # ax1.set_title('Original', fontsize=10)
-          # ax1.xaxis.set_visible(False)
-          # ax1.yaxis.set_visible(False)
-          # ax1.imshow(frame, aspect="auto")
-          # camera = Camera(f)
-          # ax2.set_title('Filter+Perspective Tform', fontsize=10)
-          # ax2.xaxis.set_visible(False)
-          # ax2.yaxis.set_visible(False)
-          # ax2.imshow(warped_img, aspect="auto")
-          #
-          # ax3.plot(curves[0], ploty, color='yellow', linewidth=5)
-          # ax3.plot(curves[1], ploty, color='yellow', linewidth=5)
-          # ax3.xaxis.set_visible(False)
-          # ax3.yaxis.set_visible(False)
-          # ax3.set_title('Sliding window+Curve Fit', fontsize=10)
-          # ax3.imshow(out_img, aspect="auto")
-          #
-          # ax4.set_title('Overlay Lanes', fontsize=10)
-          # ax4.xaxis.set_visible(False)
-          # ax4.yaxis.set_visible(False)
-          # ax4.imshow(result, aspect="auto")
-          #
-          # # plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
-          # animation.FuncAnimation(f, ax1, interval=2, blit=True)
-          # animation = camera.animate()
-          # plt.show()
-          rospy.sleep(1)  # sleep for one second
+      # Plotting the data
+      # f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(20, 5))
+      # ax1.set_title('Original', fontsize=10)
+      # ax1.xaxis.set_visible(False)
+      # ax1.yaxis.set_visible(False)
+      # ax1.imshow(frame, aspect="auto")
+      # camera = Camera(f)
+      # ax2.set_title('Filter+Perspective Tform', fontsize=10)
+      # ax2.xaxis.set_visible(False)
+      # ax2.yaxis.set_visible(False)
+      # ax2.imshow(warped_img, aspect="auto")
+      #
+      # ax3.plot(curves[0], ploty, color='yellow', linewidth=5)
+      # ax3.plot(curves[1], ploty, color='yellow', linewidth=5)
+      # ax3.xaxis.set_visible(False)
+      # ax3.yaxis.set_visible(False)
+      # ax3.set_title('Sliding window+Curve Fit', fontsize=10)
+      # ax3.imshow(out_img, aspect="auto")
+      #
+      # ax4.set_title('Overlay Lanes', fontsize=10)
+      # ax4.xaxis.set_visible(False)
+      # ax4.yaxis.set_visible(False)
+      # ax4.imshow(result, aspect="auto")
+      #
+      # # plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
+      # animation.FuncAnimation(f, ax1, interval=2, blit=True)
+      # animation = camera.animate()
+      # plt.show()
+      rospy.sleep(1)  # sleep for one second
 
 if __name__ == '__main__':
    try:

@@ -164,7 +164,7 @@ def sliding_window(img, nwindows=9, margin=75, minpix = 1, draw_windows=True):
     return out_img, (left_fitx, right_fitx), (left_fit_, right_fit_), ploty
 
 def lane_detector():
- rospy.init_node('curved_lane_detector', anonymous=True)
+ rospy.init_node('lane_detector_image', anonymous=True)
 
  # Load an color image in grayscale
  home = expanduser("~/ICRA_2020/curved_lane.jpg") #very_curved.png"

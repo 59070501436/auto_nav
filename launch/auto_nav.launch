@@ -20,11 +20,11 @@
   <arg name="model_extras" default="$(find auto_nav)/urdf/sensors_sim.xacro"/>
 
   <!-- Set the maps, joystick, gui -->
-  <arg name="with_gui" default="false"/>
+  <arg name="with_gui" default="true"/>
   <arg name="joy_dev" default="/dev/input/js0" />
   <param name="use_sim_time" value="false" />
   <arg name="map_file" default="$(find auto_nav)/maps/white_image.yaml"/>
-  <arg name="world_name" default="open_fields"/>
+  <arg name="world_name" value="$(find auto_nav)/worlds/tracks_world.world"/>
 
   <!-- model bringup -->
   <include file="$(find auto_nav)/launch/gazebo_world.launch">
@@ -37,7 +37,7 @@
     <arg name="yaw" value="$(arg yaw)" />
 
     <arg name="simple_sim" value="$(arg simple_sim)" />
-    <arg name="with_teleoperation" value="$(arg with_teleoperation)" />
+    <arg name="with_teleoperation" value="$(arg with_teleoperation)"/>
     <arg name="robot_name" value="$(arg robot_name)" />
     <arg name="tf_prefix" value="$(arg tf_prefix)" />
     <arg name="robot_model" value="$(arg robot_model)"/>
@@ -49,26 +49,22 @@
 
   </include>
 
-  <!-- model bringup -->
-<!--include file="$(find thorvald_model)/launch/model.launch">
-    <arg name="robot_model" value="$(arg robot_model)" />
-    <arg name="model_extras" value="$(arg model_extras)" />
-</include-->
-
-<!-- base bringup-->
-<!--include file="$(find thorvald_base)/launch/base_bringup.launch">
-  <arg name="robot_model" value="$(arg robot_model)" />
-  <arg name="simple_sim" value="True" />
-  <arg name="enable_odom_tf" value="false" />
-  <arg name="odom_frame_id" value="odom" />
-</include-->
-
   <!-- Run the map server -->
   <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
 
   <!-- Localization -->
-  <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster"
-                                              args="0.0 0 0.0 0 0 0 1 map base_link 100" />
+  <node name="fake_localization" pkg="fake_localization" type="fake_localization" unless="$(arg use_amcl)">
+            <remap from="base_pose_ground_truth" to="odometry/gazebo" />
+            <param name="odom_frame_id" type="string" value="odom"/>
+            <param name="base_frame_id" type="string" value="base_link"/>
+  </node>
+
+  <!-- AMCL -->
+  <include file="$(find auto_nav)/launch/amcl.launch" if="$(arg use_amcl)">
+    <arg name="initial_pose_x" value="$(arg x)"/>
+    <arg name="initial_pose_y" value="$(arg y)"/>
+    <arg name="initial_pose_a" value="$(arg yaw)"/>
+  </include>
 
   <!-- Lane Detector -->
   <!--node pkg="auto_nav" name="lane_detection" type="lane_detection.py" output="screen" /-->
