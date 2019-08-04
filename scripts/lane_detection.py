@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import cv2
 import os
-import glob
+import sys
+import roslib
 import matplotlib.pyplot as plt
 import pickle
 import math
@@ -20,6 +21,7 @@ from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import Image
 import tf2_ros
 import quaternion
+from cv_bridge import CvBridge, CvBridgeError
 
 K = CameraInfo()
 rgb_img = Image()
@@ -45,12 +47,15 @@ def imagecaminfoCallback(data):
     cam_param_receive = True
 
 def imageCallback(ros_data):
-    global rgb_img, img_receive
-    #### direct conversion to CV2 ####
-    np_arr = np.fromstring(ros_data.data, np.uint8)
-    rgb_img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    global rgb_img, img_receive, bridge
+    bridge = CvBridge()
+
+    try:
+      rgb_img = bridge.imgmsg_to_cv2(ros_data, "bgr8")
+    except CvBridgeError as e:
+      print(e)
+
     img_receive = True
-    print img_receive
 
 def perspective_warp(img, dst_size, src, dst): # Choose the four vertices
 
@@ -83,6 +88,24 @@ def inv_perspective_warp(img, dst_size, src, dst):
     # Warp the image using OpenCV warpPerspective()
     warped = cv2.warpPerspective(img, M, dst_size)
     return warped, M
+
+def camera2world(x_c, t_c, R_c):
+
+ # ray in world coordinates
+ x_c_q = np.quaternion(0, x_c[0], x_c[1], x_c[2])
+ x_wq = R_c*x_c_q*R_c.conjugate()
+ x_w = np.array([x_wq.x,x_wq.y,x_wq.z])
+
+ # distance to the plane
+ ## d = dot((t_p - t_c),n_p)/dot(x_w,n_p)
+ ## simplified expression assuming plane t_p = [0 0 0]; n_p = [0 0 1];
+ d = -t_c[2]/x_w[2]
+
+ # intersection point
+ x_wd = np.array([(x_w[0]*d),(x_w[1]*d),(x_w[2]*d)])
+ x_p = np.add(x_wd, t_c)
+
+ return x_p
 
 def sliding_window(img, nwindows=15, margin=50, minpix=1, draw_windows=True):
     global left_a, left_b, left_c,right_a, right_b, right_c
@@ -249,57 +272,44 @@ def vid_pipeline(img_frame):
 
     return midLane1, out_img, result #invwarp
 
-def camera2world(x_c, t_c, R_c):
-
- # ray in world coordinates
- x_c_q = np.quaternion(0, x_c[0], x_c[1], x_c[2])
- x_wq = R_c*x_c_q*R_c.conjugate()
- x_w = np.array([x_wq.x,x_wq.y,x_wq.z])
-
- # distance to the plane
- ## d = dot((t_p - t_c),n_p)/dot(x_w,n_p)
- ## simplified expression assuming plane t_p = [0 0 0]; n_p = [0 0 1];
- d = -t_c[2]/x_w[2]
-
- # intersection point
- x_wd = np.array([(x_w[0]*d),(x_w[1]*d),(x_w[2]*d)])
- x_p = np.add(x_wd, t_c)
-
- return x_p
-
 def lane_detector():
   publisher = rospy.Publisher('test_poses', PoseArray)
   rospy.init_node('lane_detector', anonymous=True)
 
   rospy.Subscriber("/kinect2_camera/rgb/camera_info", CameraInfo, imagecaminfoCallback)
-  #rospy.Subscriber("/kinect2_camera/rgb/image_color_rect", Image, imageCallback)
+  rospy.Subscriber("/kinect2_camera/rgb/image_color_rect", Image, imageCallback)
 
   listener = tf.TransformListener()
   init_transform = geometry_msgs.msg.TransformStamped()
 
   while not rospy.is_shutdown():
 
-      #centerLine, warp_img, output = vid_pipeline(frame)
+      global img_receive, rgb_img, cam_param_receive, K
 
-      # Camera Parmeters
-      # Calcuate 3D World Point from 2D Image Point
-      #p_c = np.array([centerLine[0][0], centerLine[0][1], 1])
-      global img_receive, cam_param_receive, K
+      if img_receive==True: #cam_param_receive
 
-      try:
-        # wait for the transform to be found
-        #listener.waitForTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0),rospy.Duration(5.0))
-        (trans,rot) = listener.lookupTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0))
+          #cv2.imshow("Image window", rgb_img)
+          #cv2.waitKey(3)
 
-      except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-          continue
+          centerLine, warp_img, output = vid_pipeline(rgb_img)
 
-      t_c = np.array([[trans[0]], [trans[1]], [trans[2]]])
-      R_c = np.quaternion(rot[3], rot[0], rot[1], rot[2]) # Format: (w,x,y,z)
+          # Camera Parmeters
+          # Calcuate 3D World Point from 2D Image Point
+          p_c = np.array([centerLine[0][0], centerLine[0][1], 1])
+          print centerLine[0][0], centerLine[0][1]
+          #p_c = np.array([0, 0, 1])
 
-      if cam_param_receive==True: #cam_param_receive
+          try:
+            # wait for the transform to be found
+            #listener.waitForTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0),rospy.Duration(5.0))
+            (trans,rot) = listener.lookupTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0))
 
-          p_c = np.array([0, 0, 1])
+          except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+              continue
+
+          t_c = np.array([[trans[0]], [trans[1]], [trans[2]]])
+          R_c = np.quaternion(rot[3], rot[0], rot[1], rot[2]) # Format: (w,x,y,z)
+
           K_arr = [[K[0], K[1], K[2]],
                    [K[3], K[4], K[5]],
                    [K[6], K[7], K[8]]]
@@ -308,16 +318,9 @@ def lane_detector():
           norm_LA = LA.norm(x_c, axis=0)
           x_c = x_c/norm_LA # Normalize the vector
 
-          #rospy.loginfo(rospy.get_caller_id() + "I heard %s", K[0])
           #cam_param_receive = False
 
           x_p = camera2world(x_c, t_c, R_c)
-
-          #p_c1 = np.array([1080, 1920, 1])
-          #x_c1 = np.matmul(np.linalg.inv(K), p_c1)
-          #x_p1 = camera2world(x_c1, init_transform.transform.translation, R_c)
-
-          #print x_p
 
           # # Used to publish waypoints as pose array so that you can see them in rviz, etc.
           poses = PoseArray()
