@@ -98,10 +98,26 @@
   <exec_depend>dynamic_reconfigure</exec_depend>
   <exec_depend>message_generation</exec_depend>
   <exec_depend>visualization_msgs</exec_depend>
+<<<<<<< HEAD
 
   <!-- The export tag contains other, unspecified, tags -->
  <export>
    <!-- Other tools can request additional information be placed here -->
    <costmap_2d plugin="${prefix}/costmap_plugins.xml" />
  </export>
+=======
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+
+      <!-- gazebo_ros_paths_plugin automatically adds these to
+        GAZEBO_PLUGIN_PATH and GAZEBO_MODEL_PATH when you do this export inside
+        the package.xml file. You can than use URIs of type model://my_package/stuff. -->
+    <gazebo_ros  gazebo_plugin_path="${prefix}/lib" gazebo_model_path="${prefix}/models" /> 
+    <!-- Other tools can request additional information be placed here -->
+
+  </export>
+
+>>>>>>> 09f8d3de6f9f5768304ec4ae8b5d60c9b95bfc95
 </package>
