@@ -29,7 +29,12 @@ message_generation
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-
+find_package(Eigen3 REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(PythonLibs REQUIRED)
+include_directories(${PYTHON_INCLUDE_DIRS})
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -117,9 +122,10 @@ message_generation
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES auto_nav
-#  CATKIN_DEPENDS nav_msgs roscpp std_msgs
+INCLUDE_DIRS include
+# LIBRARIES rasberry_agricultural_costmaps
+CATKIN_DEPENDS nav_msgs rospy sensor_msgs std_msgs thorvald_twist_mux kinect2_description cv_bridge image_transport tf tf2_geometry_msgs pcl_conversions
+  pcl_ros costmap_2d dynamic_reconfigure
 #  DEPENDS system_lib
 )
 
@@ -130,14 +136,14 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
+   ${catkin_INCLUDE_DIRS}
+   ${PYTHON_INCLUDE_DIRS}
+   include
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/auto_nav.cpp
-# )
+add_library(agri_costmap_layer_v2 src/agri_costmap_layer_v2.cpp)
+
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
