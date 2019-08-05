@@ -8,14 +8,14 @@
 #include <pluginlib/class_list_macros.h>
 #include <dynamic_reconfigure/server.h>
 
-#include <rasberry_agricultural_costmaps/custom_costmap_paramsConfig.h>
+#include <auto_nav/custom_costmap_paramsConfig.h>
 
 #include "opencv2/opencv.hpp" // OPENCV
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 
 // ROS message includes
-#include <rasberry_agricultural_costmaps/sub_goal.h>
+#include <auto_nav/sub_goal.h>
 #include <std_msgs/String.h>
 #include <geometry_msgs/PoseArray.h>
 #include <visualization_msgs/Marker.h>  // To get the line end points
@@ -41,7 +41,7 @@ namespace custom_layer
 
     virtual void vecposeCallback (const geometry_msgs::PoseArray::ConstPtr& vec_msg); // Line points
 
-    virtual bool change_row(rasberry_agricultural_costmaps::sub_goal::Request &req, rasberry_agricultural_costmaps::sub_goal::Response &res);
+    virtual bool change_row(auto_nav::sub_goal::Request &req, auto_nav::sub_goal::Response &res);
 
     bool initParameters();
 
@@ -65,9 +65,9 @@ namespace custom_layer
     int on_curved_lane = 0;
 
     private:
-    void reconfigureCB(rasberry_agricultural_costmaps::custom_costmap_paramsConfig &config, uint32_t level);
+    void reconfigureCB(auto_nav::custom_costmap_paramsConfig &config, uint32_t level);
 
-    dynamic_reconfigure::Server<rasberry_agricultural_costmaps::custom_costmap_paramsConfig> *dsrv_;
+    dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig> *dsrv_;
 
    };
  }

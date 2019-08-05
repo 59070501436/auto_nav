@@ -26,8 +26,8 @@ void AgriCostmapLayer_v2::onInitialize() {
   ros::NodeHandle nh_("~/" + name_);
   current_ = true;
 
-  dsrv_ = new dynamic_reconfigure::Server<rasberry_agricultural_costmaps::custom_costmap_paramsConfig>(nh_);
-  dynamic_reconfigure::Server<rasberry_agricultural_costmaps::custom_costmap_paramsConfig>::CallbackType f = boost::bind(
+  dsrv_ = new dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>(nh_);
+  dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>::CallbackType f = boost::bind(
      &AgriCostmapLayer_v2::reconfigureCB, this, _1, _2);
   dsrv_->setCallback(f);
 
@@ -36,12 +36,12 @@ void AgriCostmapLayer_v2::onInitialize() {
 void AgriCostmapLayer_v2::currnodeCallback(const std_msgs::String::ConstPtr& curr_node_msg) // Current Topological Node
 {
  str_name = curr_node_msg->data;
-// ROS_INFO("waypoint");
+
  if((str_name=="WayPoint59")){ // Entering curves Frogn_Fields: WayPoint1 Polytunnels:WayPoint134
    costmap_status = 1;
 
-   dsrv_ = new dynamic_reconfigure::Server<rasberry_agricultural_costmaps::custom_costmap_paramsConfig>(nh);
-   dynamic_reconfigure::Server<rasberry_agricultural_costmaps::custom_costmap_paramsConfig>::CallbackType f = boost::bind(
+   dsrv_ = new dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>(nh);
+   dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>::CallbackType f = boost::bind(
       &AgriCostmapLayer_v2::reconfigureCB, this, _1, _2);
    dsrv_->setCallback(f);
  }
@@ -49,8 +49,8 @@ void AgriCostmapLayer_v2::currnodeCallback(const std_msgs::String::ConstPtr& cur
  if((str_name=="WayPoint34")){ // Entering curves Frogn_Fields: WayPoint2 Polytunnels:WayPoint99
    costmap_status = 0;
 
- dsrv_ = new dynamic_reconfigure::Server<rasberry_agricultural_costmaps::custom_costmap_paramsConfig>(nh);
-   dynamic_reconfigure::Server<rasberry_agricultural_costmaps::custom_costmap_paramsConfig>::CallbackType f = boost::bind(
+ dsrv_ = new dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>(nh);
+   dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>::CallbackType f = boost::bind(
       &AgriCostmapLayer_v2::reconfigureCB, this, _1, _2);
    dsrv_->setCallback(f);
  }
@@ -58,8 +58,8 @@ void AgriCostmapLayer_v2::currnodeCallback(const std_msgs::String::ConstPtr& cur
  if((str_name=="WayPoint6")){ // Entering curves
    on_curved_lane = 0;
 
-   dsrv_ = new dynamic_reconfigure::Server<rasberry_agricultural_costmaps::custom_costmap_paramsConfig>(nh);
-   dynamic_reconfigure::Server<rasberry_agricultural_costmaps::custom_costmap_paramsConfig>::CallbackType f = boost::bind(
+   dsrv_ = new dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>(nh);
+   dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>::CallbackType f = boost::bind(
       &AgriCostmapLayer_v2::reconfigureCB, this, _1, _2);
    dsrv_->setCallback(f);
  }
@@ -67,8 +67,8 @@ void AgriCostmapLayer_v2::currnodeCallback(const std_msgs::String::ConstPtr& cur
  if((str_name=="WayPoint4")){ // Entering curves
   on_curved_lane = 1;
 
-  dsrv_ = new dynamic_reconfigure::Server<rasberry_agricultural_costmaps::custom_costmap_paramsConfig>(nh);
-  dynamic_reconfigure::Server<rasberry_agricultural_costmaps::custom_costmap_paramsConfig>::CallbackType f = boost::bind(
+  dsrv_ = new dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>(nh);
+  dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>::CallbackType f = boost::bind(
      &AgriCostmapLayer_v2::reconfigureCB, this, _1, _2);
   dsrv_->setCallback(f);
  }
@@ -110,12 +110,12 @@ void AgriCostmapLayer_v2::vecposeCallback (const geometry_msgs::PoseArray::Const
 } // Vec callback
 
 // Reached end of row
-bool AgriCostmapLayer_v2::change_row(rasberry_agricultural_costmaps::sub_goal::Request &req, rasberry_agricultural_costmaps::sub_goal::Response &res){
+bool AgriCostmapLayer_v2::change_row(auto_nav::sub_goal::Request &req, auto_nav::sub_goal::Response &res){
      row_follow = req.counter;
      return true;
 }
 
-void AgriCostmapLayer_v2::reconfigureCB(rasberry_agricultural_costmaps::custom_costmap_paramsConfig &config, uint32_t level){
+void AgriCostmapLayer_v2::reconfigureCB(auto_nav::custom_costmap_paramsConfig &config, uint32_t level){
 
   Total_Layers = config.Total_Layers;
   Layer.resize(Total_Layers);
