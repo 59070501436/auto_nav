@@ -20,7 +20,7 @@
   <arg name="model_extras" default="$(find auto_nav)/urdf/sensors_sim.xacro"/>
 
   <!-- Set the maps, joystick, gui -->
-  <arg name="with_gui" default="true"/>
+  <arg name="with_gui" default="False"/>
   <arg name="joy_dev" default="/dev/input/js0" />
   <param name="use_sim_time" value="false" />
   <arg name="map_file" default="$(find auto_nav)/maps/white_image.yaml"/>

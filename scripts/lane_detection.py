@@ -16,7 +16,7 @@ from numpy import linalg as LA
 from moviepy.editor import VideoFileClip
 from os.path import expanduser
 import geometry_msgs.msg
-from geometry_msgs.msg import Pose, PoseArray
+from geometry_msgs.msg import Pose, PoseArray,Point
 from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import Image
 import tf2_ros
@@ -85,6 +85,7 @@ def inv_perspective_warp(img, dst_size, src, dst):
     dst = dst * np.float32(dst_size)
     # Given src and dst points, calculate the perspective transform matrix
     M = cv2.getPerspectiveTransform(src, dst)
+    #print M
     # Warp the image using OpenCV warpPerspective()
     warped = cv2.warpPerspective(img, M, dst_size)
     return warped, M
@@ -254,23 +255,39 @@ def vid_pipeline(img_frame):
     curves_m = (curves[0]+curves[1])/2
     midLane = np.array([np.transpose(np.vstack([curves_m, ploty]))])
 
-    leftLane1 = leftLane[0].astype(int)
-    rightLane1 = rightLane[0].astype(int)
-    midLane1 = midLane[0].astype(int)
+    leftLane_i = leftLane[0].astype(int)
+    rightLane_i = rightLane[0].astype(int)
+    midLane_i = midLane[0].astype(int)
 
-    cv2.polylines(out_img, [leftLane1], 0, (0,255,255), thickness=5, lineType=8, shift=0)
-    cv2.polylines(out_img, [rightLane1], 0, (0,255,255), thickness=5, lineType=8, shift=0)
-    cv2.polylines(out_img, [midLane1], 0, (255,0,255), thickness=5, lineType=8, shift=0)
+    cv2.polylines(out_img, [leftLane_i], 0, (0,255,255), thickness=5, lineType=8, shift=0)
+    cv2.polylines(out_img, [rightLane_i], 0, (0,255,255), thickness=5, lineType=8, shift=0)
+    cv2.polylines(out_img, [midLane_i], 0, (255,0,255), thickness=5, lineType=8, shift=0)
 
     dst_size =(rwidth, rheight)
     invwarp, Minv = inv_perspective_warp(out_img, dst_size, dst, src)
+
+    midPoints = []
+    for i in midLane_i:
+      point_wp = np.array([i[0],i[1],1])
+      midLane_io = np.matmul(Minv, point_wp) # inverse-M*warp_pt
+      midLane_n = np.array([midLane_io[0]/midLane_io[2],midLane_io[1]/midLane_io[2]]) # divide by Z point
+      midLane_n = midLane_n.astype(int)
+      midPoints.append(midLane_n)
 
     # Combine the result with the original image
     img_frame[roi_y:height,roi_x:width] = cv2.addWeighted(img_frame[roi_y:height,roi_x:width],
                                                                        1, invwarp, 0.9, 0)
     result = img_frame
 
-    return midLane1, out_img, result #invwarp
+    return midPoints, out_img, result
+
+def normalizeangle(bearing): # Normalize the bearing
+
+  if (bearing < -math.pi):
+     bearing += 2 * math.pi
+  elif (bearing > math.pi):
+     bearing -= 2 * math.pi
+  return bearing
 
 def lane_detector():
   publisher = rospy.Publisher('test_poses', PoseArray)
@@ -288,17 +305,6 @@ def lane_detector():
 
       if img_receive==True: #cam_param_receive
 
-          #cv2.imshow("Image window", rgb_img)
-          #cv2.waitKey(3)
-
-          centerLine, warp_img, output = vid_pipeline(rgb_img)
-
-          # Camera Parmeters
-          # Calcuate 3D World Point from 2D Image Point
-          p_c = np.array([centerLine[0][0], centerLine[0][1], 1])
-          print centerLine[0][0], centerLine[0][1]
-          #p_c = np.array([0, 0, 1])
-
           try:
             # wait for the transform to be found
             #listener.waitForTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0),rospy.Duration(5.0))
@@ -314,50 +320,45 @@ def lane_detector():
                    [K[3], K[4], K[5]],
                    [K[6], K[7], K[8]]]
 
-          x_c = np.linalg.inv(K_arr).dot(p_c)
-          norm_LA = LA.norm(x_c, axis=0)
-          x_c = x_c/norm_LA # Normalize the vector
+          centerLine, warp_img, output = vid_pipeline(rgb_img)
+          #print(len(centerLine))
 
-          #cam_param_receive = False
-
-          x_p = camera2world(x_c, t_c, R_c)
-
+          Total_Points = 4
+          Line_Pts = []
           # # Used to publish waypoints as pose array so that you can see them in rviz, etc.
           poses = PoseArray()
           poses.header.frame_id = "map"
           poses.header.stamp = rospy.Time.now()
 
-          pose = Pose()
-          pose.position.x = x_p[0]
-          pose.position.y = x_p[1]
-          pose.position.z = 0 #x_p[2]
-          pose.orientation.x = 0
-          pose.orientation.y = 0
-          pose.orientation.z = 0
-          pose.orientation.w = 1
-          poses.poses.append(pose)
+          for pt in range(Total_Points):
 
-          #pose1 = Pose()
-          #pose1.position.x = x_p1[0]
-          #pose1.position.y = x_p1[1]
-          #pose1.position.z = 0 #x_p[2]
-          #poses.poses.append(pose1)
+           # Line segment points
+           seg_x = int((centerLine[0][0]*(1-(float(pt)/Total_Points))) + (centerLine[len(centerLine)-1][0]*(float(pt)/Total_Points)))
+           seg_y = int((centerLine[0][1]*(1-(float(pt)/Total_Points))) + (centerLine[len(centerLine)-1][1]*(float(pt)/Total_Points)))
 
+           # Calcuate 3D World Point from 2D Image Point
+           p_c = np.array([seg_x+roi_x, seg_y+roi_y, 1])
+           x_c = np.linalg.inv(K_arr).dot(p_c) # Applying Intrinsic Parameters
+           x_c_norm = LA.norm(x_c, axis=0)
+           x_c = x_c/x_c_norm # Normalize the vector
+           x_p = camera2world(x_c, t_c, R_c)
+
+           Line_Pts.append([x_p[0],x_p[1]])
+
+           position = Point(x_p[0], x_p[1], x_p[2])
+           orientation = np.quaternion(1,0,0,0)
+
+           if pt>0:
+                yaw = math.atan2(Line_Pts[pt-1][1]-Line_Pts[pt][1],Line_Pts[pt-1][0]-Line_Pts[pt][0])
+                #print yaw
+
+                quaternion_c = tf.transformations.quaternion_from_euler(0, 0, normalizeangle(yaw)) #math.pi
+                orientation = np.quaternion(quaternion_c[3],quaternion_c[0],quaternion_c[1],quaternion_c[2])
+
+           poses.poses.append(Pose(position,orientation))
+
+          # Publish the vector of poses
           publisher.publish(poses)
-
-          # Press Q on keyboard to  exit
-          #if cv2.waitKey(25) & 0xFF == ord('q'):
-              #break
-
-          # Break the loop
-          #else:
-              #break
-
-          # When everything done, release the video capture object
-          #cap.release()
-
-          # Closes all the frames
-          #cv2.destroyAllWindows()
 
           # Display the resulting frame
           #cv2.startWindowThread()
@@ -373,6 +374,17 @@ def lane_detector():
           #cv2.namedWindow('preview1', cv2.WINDOW_NORMAL)
           #cv2.resizeWindow('preview1', 800,800)
           #cv2.imshow('preview1', output)
+
+          # Press Q on keyboard to  exit
+          #if cv2.waitKey(25) & 0xFF == ord('q'):
+              #break
+
+          # Break the loop
+          #else:
+              #break
+
+          # Closes all the frames
+          #cv2.destroyAllWindows()
 
           # Plotting the data
           # f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(20, 5))
@@ -402,6 +414,8 @@ def lane_detector():
           # animation.FuncAnimation(f, ax1, interval=2, blit=True)
           # animation = camera.animate()
           # plt.show()
+
+          cam_param_receive = False
           rospy.sleep(1)  # sleep for one second
 
 if __name__ == '__main__':
