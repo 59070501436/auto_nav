@@ -10,4 +10,4 @@ local_costmap:
   plugins:
     - {name: obstacle_layer, type: "costmap_2d::ObstacleLayer"}
     - {name: local_inflation_layer, type: "costmap_2d::InflationLayer"}
-    - {name: agri_costmap_layer, type: "custom_layer::AgriCostmapLayer"}
+    #- {name: agri_costmap_layer, type: "custom_layer::AgriCostmapLayer_v2"}

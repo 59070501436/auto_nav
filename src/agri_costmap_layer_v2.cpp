@@ -6,7 +6,7 @@ namespace custom_layer{
 
 AgriCostmapLayer_v2::AgriCostmapLayer_v2() {
 
-  vec_sub = nh.subscribe("test_poses", 100, &AgriCostmapLayer_v2::vecposeCallback, this);
+  vec_sub = nh.subscribe("vector_poses", 100, &AgriCostmapLayer_v2::vecposeCallback, this);
   costmapService = nh.advertiseService("costmaps_service", &AgriCostmapLayer_v2::change_row, this);
   curr_node_sub = nh.subscribe("current_node", 100, &AgriCostmapLayer_v2::currnodeCallback, this);
 
@@ -48,8 +48,7 @@ void AgriCostmapLayer_v2::currnodeCallback(const std_msgs::String::ConstPtr& cur
 
  if((str_name=="WayPoint34")){ // Entering curves Frogn_Fields: WayPoint2 Polytunnels:WayPoint99
    costmap_status = 0;
-
- dsrv_ = new dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>(nh);
+   dsrv_ = new dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>(nh);
    dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>::CallbackType f = boost::bind(
       &AgriCostmapLayer_v2::reconfigureCB, this, _1, _2);
    dsrv_->setCallback(f);
@@ -75,38 +74,37 @@ void AgriCostmapLayer_v2::currnodeCallback(const std_msgs::String::ConstPtr& cur
 
 }
 
-cv::Point2f AgriCostmapLayer_v2::rotate_vector(cv::Point2f vec_pt, cv::Point2f l_pt, double vec_yaw){ // Rotate the points around the vector
+cv::Point2f AgriCostmapLayer_v2::rotate_vector(cv::Point2f vec_pt, cv::Point2f l_pt, float vec_yaw){ // Rotate the points around the vector
   cv::Point2f l_pt_rot;
-  double c = cos(yaw_a), s = sin(yaw_a);
+  double c = cos(vec_yaw), s = sin(vec_yaw);
   l_pt_rot.x = vec_pt.x+(c*(l_pt.x-vec_pt.x)-s*(l_pt.y-vec_pt.y));
   l_pt_rot.y = vec_pt.y+(s*(l_pt.x-vec_pt.x)+c*(l_pt.y-vec_pt.y));
   return l_pt_rot;
 }
 
 void AgriCostmapLayer_v2::vecposeCallback (const geometry_msgs::PoseArray::ConstPtr& vec_msg){
-  vec.x = vec_msg->poses[0].position.x;
-  vec.y = vec_msg->poses[0].position.y;
-  yaw_a = tf::getYaw(vec_msg->poses[0].orientation);
 
-  // Rotate the lines around the pose vector
-  std::vector<cv::Point2f> P_i;
-  P_i.resize(4);
+  if(vec_msg->poses.size()>0)
+  {
+  vec.resize(vec_msg->poses.size());
+  yaw_a.resize(vec_msg->poses.size());
 
-  P_i[0] = cv::Point2f(vec.x-costmap_height, vec.y-costmap_width);
-  P_i[1] = cv::Point2f(vec.x+costmap_height, vec.y-costmap_width);
-  P_i[2] = cv::Point2f(vec.x-costmap_height, vec.y+costmap_width);
-  P_i[3] = cv::Point2f(vec.x+costmap_height, vec.y+costmap_width);
-
-  for(int p=0;p<pts; p++){ // Line Segments for L1 and L2
-
-    P[2*p] = (P_i[0]*(1-(float(p)/pts)))+(P_i[1]*(float(p)/pts)); //L1_e1
-    P[2*p] = rotate_vector(vec, P[(2*p)], yaw_a); // rotate the line points by vector
-
-    P[(2*p)+1] = (P_i[2]*(1-(float(p)/pts)))+(P_i[3]*(float(p)/pts)); //L2_e1
-    P[(2*p)+1] = rotate_vector(vec, P[(2*p)+1], yaw_a); // rotate the line points by vector
+  for(int v=0; v < vec_msg->poses.size(); v++){
+   cv::Point2f vec_c(vec_msg->poses[v].position.x,vec_msg->poses[v].position.y);
+   vec.push_back(vec_c);
+   // std::cout << v << " " << vec_c << "\n" << std::endl;
+   yaw_a.push_back(tf::getYaw(vec_msg->poses[0].orientation));
   }
 
-  vector_receive = true;
+
+  costmap_status = 1; //temp
+  vector_receive = 1;
+  dsrv_ = new dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>(nh);
+  dynamic_reconfigure::Server<auto_nav::custom_costmap_paramsConfig>::CallbackType f = boost::bind(
+     &AgriCostmapLayer_v2::reconfigureCB, this, _1, _2);
+  dsrv_->setCallback(f);
+  }
+
 } // Vec callback
 
 // Reached end of row
@@ -133,8 +131,10 @@ void AgriCostmapLayer_v2::reconfigureCB(auto_nav::custom_costmap_paramsConfig &c
   pts = config.TotalSegmentPts;
   P.resize(pts*2);
 
-  if(costmap_status==1) enabled_ = config.enabled;
-  else enabled_ = false;
+  if((costmap_status==1)&&(vector_receive==1))
+      enabled_ = config.enabled;
+  else
+      enabled_ = false;
 
   //if(on_curved_lane == 0) costmap_width = config.Cost_Propagation_Area;
   //if(on_curved_lane == 1) costmap_width = 0.9;
@@ -164,6 +164,26 @@ void AgriCostmapLayer_v2::updateCosts(costmap_2d::Costmap2D& master_grid, int mi
  unsigned int mx, my;
  double cell_size = master_grid.getResolution();
 
+ for(int v = 0; v < vec.size(); v++){ // Each Vector Pose Loop
+
+ // Rotate the lines around the pose vector
+ std::vector<cv::Point2f> P_i;
+ P_i.resize(4);
+
+ P_i[0] = cv::Point2f(vec[v].x-costmap_height, vec[v].y-costmap_width);
+ P_i[1] = cv::Point2f(vec[v].x+costmap_height, vec[v].y-costmap_width);
+ P_i[2] = cv::Point2f(vec[v].x-costmap_height, vec[v].y+costmap_width);
+ P_i[3] = cv::Point2f(vec[v].x+costmap_height, vec[v].y+costmap_width);
+
+ for(int p=0;p<pts; p++){ // Line Segments for L1 and L2
+
+   P[2*p] = (P_i[0]*(1-(float(p)/pts)))+(P_i[1]*(float(p)/pts)); //L1_e1
+   P[2*p] = rotate_vector(vec[v], P[(2*p)], yaw_a[v]); // rotate the line points by vector
+
+   P[(2*p)+1] = (P_i[2]*(1-(float(p)/pts)))+(P_i[3]*(float(p)/pts)); //L2_e1
+   P[(2*p)+1] = rotate_vector(vec[v], P[(2*p)+1], yaw_a[v]); // rotate the line points by vector
+ }
+
  for (int k = 0; k < P.size(); k++) // Update the costs of each grid cell
   {
 
@@ -176,8 +196,6 @@ void AgriCostmapLayer_v2::updateCosts(costmap_2d::Costmap2D& master_grid, int mi
    }
 
  } // Update the costs of each grid cell
-
-//if(vector_receive){
 
   for(int w = 1; w < x_.size(); w++) // revert the size of the circle co-ordinates array for next iteration
   {
@@ -257,8 +275,7 @@ void AgriCostmapLayer_v2::updateCosts(costmap_2d::Costmap2D& master_grid, int mi
 
    } // Each Costmap Layer
 
-  // vector_receive = false;
-// }
+} // For loop for each vector poses
 
 } // updateCosts
 

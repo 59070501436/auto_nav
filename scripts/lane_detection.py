@@ -22,9 +22,11 @@ from sensor_msgs.msg import Image
 import tf2_ros
 import quaternion
 from cv_bridge import CvBridge, CvBridgeError
+#from std_srvs.msg import Empty
 
 K = CameraInfo()
 rgb_img = Image()
+#emptymsg = Empty()
 cam_param_receive = False
 img_receive = False
 roi_x = 0
@@ -290,7 +292,7 @@ def normalizeangle(bearing): # Normalize the bearing
   return bearing
 
 def lane_detector():
-  publisher = rospy.Publisher('test_poses', PoseArray)
+  publisher = rospy.Publisher('vector_poses', PoseArray)
   rospy.init_node('lane_detector', anonymous=True)
 
   rospy.Subscriber("/kinect2_camera/rgb/camera_info", CameraInfo, imagecaminfoCallback)
@@ -321,9 +323,22 @@ def lane_detector():
                    [K[6], K[7], K[8]]]
 
           centerLine, warp_img, output = vid_pipeline(rgb_img)
-          #print(len(centerLine))
 
-          Total_Points = 4
+          # Display the resulting frame
+          cv2.startWindowThread()
+          #cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+          #cv2.resizeWindow('preview', 800,800)
+          #cv2.imshow('preview', warp_img)
+
+          fheight, fwidth = output.shape[:2]
+          warp_img = cv2.resize(warp_img,(int(fwidth),int(fheight)))
+          numpy_horizontal = np.hstack((warp_img, output))
+
+          cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+          cv2.resizeWindow('preview', 800,800)
+          cv2.imshow('preview', numpy_horizontal)
+
+          Total_Points = 5
           Line_Pts = []
           # # Used to publish waypoints as pose array so that you can see them in rviz, etc.
           poses = PoseArray()
@@ -360,24 +375,12 @@ def lane_detector():
           # Publish the vector of poses
           publisher.publish(poses)
 
-          # Display the resulting frame
-          #cv2.startWindowThread()
-          #cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
-          #cv2.resizeWindow('preview', 800,800)
-          #cv2.imshow('preview', warp_img)
-
-          #fheight, fwidth = output.shape[:2]
-          #print warp_img.shape, output.shape
-          #warp_img = cv2.resize(warp_img,(int(fwidth),int(fheight)))
-          #numpy_horizontal = np.hstack((warp_img, output))
-
-          #cv2.namedWindow('preview1', cv2.WINDOW_NORMAL)
-          #cv2.resizeWindow('preview1', 800,800)
-          #cv2.imshow('preview1', output)
+          # ROS Servive to clear the old costmaps
+          #ros::service::call("/move_base/clear_costmaps", emptymsg)
 
           # Press Q on keyboard to  exit
-          #if cv2.waitKey(25) & 0xFF == ord('q'):
-              #break
+          if cv2.waitKey(25) & 0xFF == ord('q'):
+              break
 
           # Break the loop
           #else:

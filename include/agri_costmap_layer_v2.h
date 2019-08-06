@@ -47,7 +47,7 @@ namespace custom_layer
 
     void currnodeCallback (const std_msgs::String::ConstPtr& curr_node_msg);
 
-    cv::Point2f rotate_vector(cv::Point2f vec_pt, cv::Point2f l_pt, double vec_yaw);
+    cv::Point2f rotate_vector(cv::Point2f vec_pt, cv::Point2f l_pt, float vec_yaw);
 
     ros::NodeHandle nh;
     ros::Subscriber vec_sub, curr_node_sub;
@@ -55,13 +55,14 @@ namespace custom_layer
 
     // Paramters Initialization
     int pts, row_follow = 0;
-    cv::Point2f vec;
+    std::vector<cv::Point2f> vec;
     std::vector<cv::Point2f> P;
     std::vector<float> Layer;
+    std::vector<float> yaw_a;
     std::vector<std::vector<double> > x_, y_;
 
-    double Total_Layers, costmap_height, costmap_width, costmap_radius, yaw_a;
-    bool costmap_status = 0, vector_receive = false, update_bounds = false;
+    double Total_Layers, costmap_height, costmap_width, costmap_radius;
+    bool costmap_status = 0, vector_receive = 0, update_bounds = false;
     int on_curved_lane = 0;
 
     private:

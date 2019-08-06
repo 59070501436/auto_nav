@@ -3,8 +3,7 @@ Panels:
     Help Height: 78
     Name: Displays
     Property Tree Widget:
-      Expanded:
-        - /PoseArray1
+      Expanded: ~
       Splitter Ratio: 0.5
     Tree Height: 845
   - Class: rviz/Selection
@@ -50,7 +49,7 @@ Visualization Manager:
       Reference Frame: map
       Value: true
     - Class: rviz/Camera
-      Enabled: false
+      Enabled: true
       Image Rendering: background and overlay
       Image Topic: /kinect2_camera/rgb/image_color_rect
       Name: Camera
@@ -58,7 +57,7 @@ Visualization Manager:
       Queue Size: 2
       Transport Hint: raw
       Unreliable: false
-      Value: false
+      Value: true
       Visibility:
         Grid: true
         Map: true
@@ -246,7 +245,7 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        All Links Enabled: true
+        All Links Enabled: false
         Expand Joint Details: false
         Expand Link Details: false
         Expand Tree: false
@@ -259,7 +258,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
+          Value: false
         kinect2_rgb_optical_frame:
           Alpha: 1
           Show Axes: false
@@ -281,19 +280,166 @@ Visualization Manager:
       Use Timestamp: false
       Value: true
     - Class: rviz/TF
-      Enabled: false
+      Enabled: true
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        base_link:
+          Value: true
+        bat0:
+          Value: false
+        bat1:
+          Value: false
+        corner0:
+          Value: false
+        corner0_1:
+          Value: false
+        corner0_2:
+          Value: false
+        corner1:
+          Value: false
+        corner1_1:
+          Value: false
+        corner1_2:
+          Value: false
+        corner2:
+          Value: false
+        corner2_1:
+          Value: false
+        corner2_2:
+          Value: false
+        corner3:
+          Value: false
+        corner3_1:
+          Value: false
+        corner3_2:
+          Value: false
+        kinect2_depth_optical_frame:
+          Value: false
+        kinect2_link:
+          Value: false
+        kinect2_rgb_optical_frame:
+          Value: false
+        leg0:
+          Value: false
+        leg1:
+          Value: false
+        leg2:
+          Value: false
+        leg3:
+          Value: false
+        map:
+          Value: true
+        odom:
+          Value: true
+        pipe0_1:
+          Value: false
+        pipe0_2:
+          Value: false
+        pipe1_1:
+          Value: false
+        pipe1_2:
+          Value: false
+        pipe2_1:
+          Value: false
+        pipe2_2:
+          Value: false
+        pipe3_1:
+          Value: false
+        pipe3_2:
+          Value: false
+        top0:
+          Value: false
+        top1:
+          Value: false
+        top2:
+          Value: false
+        top3:
+          Value: false
+        wheel0_link:
+          Value: false
+        wheel1_link:
+          Value: false
+        wheel2_link:
+          Value: false
+        wheel3_link:
+          Value: false
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        map:
+          odom:
+            base_link:
+              bat0:
+                {}
+              bat1:
+                {}
+              corner0:
+                corner0_1:
+                  {}
+                corner0_2:
+                  {}
+              corner1:
+                corner1_1:
+                  {}
+                corner1_2:
+                  {}
+              corner2:
+                corner2_1:
+                  {}
+                corner2_2:
+                  {}
+              corner3:
+                corner3_1:
+                  {}
+                corner3_2:
+                  {}
+              kinect2_link:
+                kinect2_depth_optical_frame:
+                  {}
+                kinect2_rgb_optical_frame:
+                  {}
+              leg0:
+                wheel0_link:
+                  {}
+              leg1:
+                wheel1_link:
+                  {}
+              leg2:
+                wheel2_link:
+                  {}
+              leg3:
+                wheel3_link:
+                  {}
+              pipe0_1:
+                {}
+              pipe0_2:
+                {}
+              pipe1_1:
+                {}
+              pipe1_2:
+                {}
+              pipe2_1:
+                {}
+              pipe2_2:
+                {}
+              pipe3_1:
+                {}
+              pipe3_2:
+                {}
+              top0:
+                {}
+              top1:
+                {}
+              top2:
+                {}
+              top3:
+                {}
       Update Interval: 0
-      Value: false
+      Value: true
     - Alpha: 0.699999988
       Class: rviz/Map
       Color Scheme: costmap
@@ -345,25 +491,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 12.148077
+      Distance: 15.0191126
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 2.39907742
-        Y: 0.991938293
-        Z: -5.81204605
+        X: 5.61778021
+        Y: -0.509997129
+        Z: -3.90052652
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 1.17479539
+      Pitch: 0.794795752
       Target Frame: base_link
       Value: Orbit (rviz)
-      Yaw: 3.14355803
+      Yaw: 3.07356358
     Saved: ~
 Window Geometry:
   Camera:
@@ -373,7 +519,7 @@ Window Geometry:
   Height: 1056
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd000000040000000000000209000003dcfc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006100fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c0061007900730100000028000003dc000000d700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000c00430061006d00650072006102000001cc000001040000026f00000213000000010000010f000003dcfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730100000028000003dc000000ad00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000074b0000003efc0100000003fb0000000800540069006d00650200000035000003f90000074b0000003ffb0000000800540069006d00650200000035000003f90000074b0000003ffb0000000800540069006d0065010000000000000450000000000000000000000427000003dc00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd000000040000000000000209000003dcfc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006100fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c0061007900730100000028000003dc000000d700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000c00430061006d00650072006103000004e7000000e40000026f00000213000000010000010f000003dcfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730100000028000003dc000000ad00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000074b0000003efc0100000003fb0000000800540069006d00650200000035000003f90000074b0000003ffb0000000800540069006d00650200000035000003f90000074b0000003ffb0000000800540069006d0065010000000000000450000000000000000000000427000003dc00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
