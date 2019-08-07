@@ -13,7 +13,6 @@ import pickle
 import math
 import tf
 from numpy import linalg as LA
-from moviepy.editor import VideoFileClip
 from os.path import expanduser
 import geometry_msgs.msg
 from geometry_msgs.msg import Pose, PoseArray,Point
@@ -22,6 +21,8 @@ from sensor_msgs.msg import Image
 import tf2_ros
 import quaternion
 from cv_bridge import CvBridge, CvBridgeError
+from sklearn.cluster import KMeans
+from itertools import imap
 #from std_srvs.msg import Empty
 
 K = CameraInfo()
@@ -121,6 +122,51 @@ def sliding_window(img, nwindows=15, margin=50, minpix=1, draw_windows=True):
     midpoint = int(histogram.shape[0]/2)
     leftx_base = np.argmax(histogram[:midpoint])
     rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+    #print histogram[:midpoint], leftx_base, rightx_base
+
+
+    #Finds the expected starting points  using K-Means
+    clusters = 2
+
+    # Crop the search space
+    base_size = .1 # random number
+    bottom = (img.shape[0] - int(base_size * img.shape[0]))
+    base = img[bottom:img.shape[0], 0:img.shape[1]]
+
+    # Find white pixels
+    whitePixels = np.argwhere(base == 255)
+
+    # Attempt to run kmeans (the kmeans parameters were not chosen with any sort of hard/soft optimization)
+    try:
+        kmeans = KMeans(n_clusters=clusters, random_state=0, n_init=3, max_iter=150).fit(whitePixels)
+    except:
+    #     # If kmeans fails increase the search space unless it is the whole image, then it fails
+         if base_size > 1:
+             return None
+         else:
+             base_size = base_size * 1.5
+    #         initialPoints(clusters)
+    # conver centers to integer values so can be used as pixel coords
+    centers = [list(imap(int, center)) for center in kmeans.cluster_centers_]
+    # Lamda function to remap the y coordiates of the clusters into the image space
+    increaseY = lambda points: [points[0] + int((1 - base_size) * img.shape[0]), points[1]]
+    # map the centers in terms of the image space
+    modifiedCenters = [increaseY(center) for center in centers]
+    # print modifiedCenters
+
+    # # Display the resulting frame
+    #fheight, fwidth = img.shape[:2]
+    #histogram = cv2.resize(histogram,(int(fwidth),int(fheight)))
+    #numpy_horizontal = np.hstack(img, histogram)
+
+    img_c = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    cv2.circle(img_c,(modifiedCenters[0][1],modifiedCenters[0][0]), 18, (0, 0, 255), -1)
+    cv2.circle(img_c,(modifiedCenters[1][1],modifiedCenters[1][0]), 18, (0, 0, 255), -1)
+
+    cv2.startWindowThread()
+    cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('preview', 800,800)
+    cv2.imshow('preview', img_c)
 
     # Set height of windows
     window_height = np.int(img.shape[0]/nwindows)
@@ -281,7 +327,7 @@ def vid_pipeline(img_frame):
                                                                        1, invwarp, 0.9, 0)
     result = img_frame
 
-    return midPoints, out_img, result
+    return warped_img, midPoints, out_img, result
 
 def normalizeangle(bearing): # Normalize the bearing
 
@@ -322,61 +368,57 @@ def lane_detector():
                    [K[3], K[4], K[5]],
                    [K[6], K[7], K[8]]]
 
-          centerLine, warp_img, output = vid_pipeline(rgb_img)
+          warped_img, centerLine, curve_fit_img, output = vid_pipeline(rgb_img)
 
-          # Display the resulting frame
-          cv2.startWindowThread()
-          #cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
-          #cv2.resizeWindow('preview', 800,800)
-          #cv2.imshow('preview', warp_img)
+          # # Display the resulting frame
+          # cv2.startWindowThread()
+          # #cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+          # #cv2.resizeWindow('preview', 800,800)
+          # #cv2.imshow('preview', warp_img)
+          #
+          # fheight, fwidth = output.shape[:2]
+          # warp_img = cv2.resize(warp_img,(int(fwidth),int(fheight)))
+          # numpy_horizontal = np.hstack((warp_img, output))
+          #
+          # cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+          # cv2.resizeWindow('preview', 800,800)
+          # cv2.imshow('preview', numpy_horizontal)
 
-          fheight, fwidth = output.shape[:2]
-          warp_img = cv2.resize(warp_img,(int(fwidth),int(fheight)))
-          numpy_horizontal = np.hstack((warp_img, output))
-
-          cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
-          cv2.resizeWindow('preview', 800,800)
-          cv2.imshow('preview', numpy_horizontal)
-
-          Total_Points = 5
-          Line_Pts = []
-          # # Used to publish waypoints as pose array so that you can see them in rviz, etc.
-          poses = PoseArray()
-          poses.header.frame_id = "map"
-          poses.header.stamp = rospy.Time.now()
-
-          for pt in range(Total_Points):
-
-           # Line segment points
-           seg_x = int((centerLine[0][0]*(1-(float(pt)/Total_Points))) + (centerLine[len(centerLine)-1][0]*(float(pt)/Total_Points)))
-           seg_y = int((centerLine[0][1]*(1-(float(pt)/Total_Points))) + (centerLine[len(centerLine)-1][1]*(float(pt)/Total_Points)))
-
-           # Calcuate 3D World Point from 2D Image Point
-           p_c = np.array([seg_x+roi_x, seg_y+roi_y, 1])
-           x_c = np.linalg.inv(K_arr).dot(p_c) # Applying Intrinsic Parameters
-           x_c_norm = LA.norm(x_c, axis=0)
-           x_c = x_c/x_c_norm # Normalize the vector
-           x_p = camera2world(x_c, t_c, R_c)
-
-           Line_Pts.append([x_p[0],x_p[1]])
-
-           position = Point(x_p[0], x_p[1], x_p[2])
-           orientation = np.quaternion(1,0,0,0)
-
-           if pt>0:
-                yaw = math.atan2(Line_Pts[pt-1][1]-Line_Pts[pt][1],Line_Pts[pt-1][0]-Line_Pts[pt][0])
-                #print yaw
-
-                quaternion_c = tf.transformations.quaternion_from_euler(0, 0, normalizeangle(yaw)) #math.pi
-                orientation = np.quaternion(quaternion_c[3],quaternion_c[0],quaternion_c[1],quaternion_c[2])
-
-           poses.poses.append(Pose(position,orientation))
-
-          # Publish the vector of poses
-          publisher.publish(poses)
-
-          # ROS Servive to clear the old costmaps
-          #ros::service::call("/move_base/clear_costmaps", emptymsg)
+          # Total_Points = 5
+          # Line_Pts = []
+          # # # Used to publish waypoints as pose array so that you can see them in rviz, etc.
+          # poses = PoseArray()
+          # poses.header.frame_id = "map"
+          # poses.header.stamp = rospy.Time.now()
+          #
+          # for pt in range(Total_Points):
+          #
+          #  # Line segment points
+          #  seg_x = int((centerLine[0][0]*(1-(float(pt)/Total_Points))) + (centerLine[len(centerLine)-1][0]*(float(pt)/Total_Points)))
+          #  seg_y = int((centerLine[0][1]*(1-(float(pt)/Total_Points))) + (centerLine[len(centerLine)-1][1]*(float(pt)/Total_Points)))
+          #
+          #  # Calcuate 3D World Point from 2D Image Point
+          #  p_c = np.array([seg_x+roi_x, seg_y+roi_y, 1])
+          #  x_c = np.linalg.inv(K_arr).dot(p_c) # Applying Intrinsic Parameters
+          #  x_c_norm = LA.norm(x_c, axis=0)
+          #  x_c = x_c/x_c_norm # Normalize the vector
+          #  x_p = camera2world(x_c, t_c, R_c)
+          #
+          #  Line_Pts.append([x_p[0],x_p[1]])
+          #
+          #  position = Point(x_p[0], x_p[1], x_p[2])
+          #  orientation = np.quaternion(1,0,0,0)
+          #
+          #  if pt>0:
+          #       yaw = math.atan2(Line_Pts[pt-1][1]-Line_Pts[pt][1],Line_Pts[pt-1][0]-Line_Pts[pt][0])
+          #
+          #       quaternion_c = tf.transformations.quaternion_from_euler(0, 0, normalizeangle(yaw)) #math.pi
+          #       orientation = np.quaternion(quaternion_c[3],quaternion_c[0],quaternion_c[1],quaternion_c[2])
+          #
+          #  poses.poses.append(Pose(position,orientation))
+          #
+          # # Publish the vector of poses
+          # publisher.publish(poses)
 
           # Press Q on keyboard to  exit
           if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -389,33 +431,30 @@ def lane_detector():
           # Closes all the frames
           #cv2.destroyAllWindows()
 
-          # Plotting the data
+          # #Plotting the data
           # f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(20, 5))
           # ax1.set_title('Original', fontsize=10)
           # ax1.xaxis.set_visible(False)
           # ax1.yaxis.set_visible(False)
-          # ax1.imshow(frame, aspect="auto")
-          # camera = Camera(f)
+          # ax1.imshow(rgb_img, aspect="auto")
           # ax2.set_title('Filter+Perspective Tform', fontsize=10)
           # ax2.xaxis.set_visible(False)
           # ax2.yaxis.set_visible(False)
           # ax2.imshow(warped_img, aspect="auto")
           #
-          # ax3.plot(curves[0], ploty, color='yellow', linewidth=5)
-          # ax3.plot(curves[1], ploty, color='yellow', linewidth=5)
+          # #ax3.plot(curves[0], ploty, color='yellow', linewidth=5)
+          # #ax3.plot(curves[1], ploty, color='yellow', linewidth=5)
           # ax3.xaxis.set_visible(False)
           # ax3.yaxis.set_visible(False)
           # ax3.set_title('Sliding window+Curve Fit', fontsize=10)
-          # ax3.imshow(out_img, aspect="auto")
+          # ax3.imshow(curve_fit_img, aspect="auto")
           #
           # ax4.set_title('Overlay Lanes', fontsize=10)
           # ax4.xaxis.set_visible(False)
           # ax4.yaxis.set_visible(False)
-          # ax4.imshow(result, aspect="auto")
+          # ax4.imshow(output, aspect="auto")
           #
           # # plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
-          # animation.FuncAnimation(f, ax1, interval=2, blit=True)
-          # animation = camera.animate()
           # plt.show()
 
           cam_param_receive = False
