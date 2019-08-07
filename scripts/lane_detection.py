@@ -117,11 +117,11 @@ def sliding_window(img, nwindows=15, margin=50, minpix=1, draw_windows=True):
     right_fit_ = np.empty(3)
     out_img = np.dstack((img, img, img))*255
 
-    # find peaks of left and right halves
-    histogram = np.sum(img[img.shape[0]//2:,:], axis=0) # Histrogram
-    midpoint = int(histogram.shape[0]/2)
-    leftx_base = np.argmax(histogram[:midpoint])
-    rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+    # # find peaks of left and right halves
+    # histogram = np.sum(img[img.shape[0]//2:,:], axis=0) # Histrogram
+    # midpoint = int(histogram.shape[0]/2)
+    # leftx_base = np.argmax(histogram[:midpoint])
+    # rightx_base = np.argmax(histogram[midpoint:]) + midpoint
     #print histogram[:midpoint], leftx_base, rightx_base
 
 
@@ -152,7 +152,9 @@ def sliding_window(img, nwindows=15, margin=50, minpix=1, draw_windows=True):
     increaseY = lambda points: [points[0] + int((1 - base_size) * img.shape[0]), points[1]]
     # map the centers in terms of the image space
     modifiedCenters = [increaseY(center) for center in centers]
-    # print modifiedCenters
+
+    leftx_base = modifiedCenters[0][1]
+    rightx_base = modifiedCenters[1][1]
 
     # # Display the resulting frame
     #fheight, fwidth = img.shape[:2]

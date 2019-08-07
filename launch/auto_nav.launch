@@ -21,7 +21,7 @@
 
   <!-- Set the maps, joystick, gui -->
   <arg name="with_gui" default="False"/>
-  <arg name="db_path" default="/home/saga/mongodb"/>
+  <arg name="db_path" default="$(env HOME)/mongodb"/>
   <arg name="topo_map" default="track" />
   <arg name="joy_dev" default="/dev/input/js0" />
   <param name="use_sim_time" value="false" />
