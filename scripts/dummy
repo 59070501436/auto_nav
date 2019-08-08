@@ -1,4 +1,11 @@
 
+# # find peaks of left and right halves
+# histogram = np.sum(img[img.shape[0]//2:,:], axis=0) # Histrogram
+# midpoint = int(histogram.shape[0]/2)
+# leftx_base = np.argmax(histogram[:midpoint])
+# rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+#print histogram[:midpoint], leftx_base, rightx_base
+
 #warp_zero = np.zeros_like(out_img).astype(np.uint8)
 #color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
 #color_img = np.zeros_like(Roi)
