@@ -127,11 +127,9 @@ def sliding_window(img, nwindows=15, margin=50, minpix=1, draw_windows=True):
 
     #Finds the expected starting points  using K-Means
     clusters = 2
-
-    # Crop the search space
-    base_size = .1 # random number
+    base_size = 0.1 # random number
     bottom = (img.shape[0] - int(base_size * img.shape[0]))
-    base = img[bottom:img.shape[0], 0:img.shape[1]]
+    base = img[bottom:img.shape[0], 0:img.shape[1]] # Crop the search space
 
     # Find white pixels
     whitePixels = np.argwhere(base == 255)
