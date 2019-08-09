@@ -6,16 +6,25 @@ import numpy as np
 import pandas as pd
 import cv2
 import os
-import glob
+import sys
+import roslib
 import matplotlib.pyplot as plt
+from moviepy.editor import VideoFileClip
+from os.path import expanduser
 import pickle
 import math
 import tf
 from numpy import linalg as LA
-from moviepy.editor import VideoFileClip
 from os.path import expanduser
-from geometry_msgs.msg import Pose, PoseArray
+import geometry_msgs.msg
+from geometry_msgs.msg import Pose, PoseArray,Point
 from sensor_msgs.msg import CameraInfo
+from sensor_msgs.msg import Image
+import tf2_ros
+import quaternion
+from cv_bridge import CvBridge, CvBridgeError
+from sklearn.cluster import KMeans
+from itertools import imap
 
 K = CameraInfo()
 cam_param_receive = False
@@ -37,6 +46,17 @@ def imagecaminfoCallback(data):
     global cam_param_receive, K
     K = data.K
     cam_param_receive = True
+
+def imageCallback(ros_data):
+    global rgb_img, img_receive, bridge
+    bridge = CvBridge()
+
+    try:
+      rgb_img = bridge.imgmsg_to_cv2(ros_data, "bgr8")
+    except CvBridgeError as e:
+      print(e)
+
+    img_receive = True
 
 def perspective_warp(img, dst_size, src, dst): # Choose the four vertices
 
@@ -66,9 +86,28 @@ def inv_perspective_warp(img, dst_size, src, dst):
     dst = dst * np.float32(dst_size)
     # Given src and dst points, calculate the perspective transform matrix
     M = cv2.getPerspectiveTransform(src, dst)
+    #print M
     # Warp the image using OpenCV warpPerspective()
     warped = cv2.warpPerspective(img, M, dst_size)
     return warped, M
+
+def camera2world(x_c, t_c, R_c):
+
+ # ray in world coordinates
+ x_c_q = np.quaternion(0, x_c[0], x_c[1], x_c[2])
+ x_wq = R_c*x_c_q*R_c.conjugate()
+ x_w = np.array([x_wq.x,x_wq.y,x_wq.z])
+
+ # distance to the plane
+ ## d = dot((t_p - t_c),n_p)/dot(x_w,n_p)
+ ## simplified expression assuming plane t_p = [0 0 0]; n_p = [0 0 1];
+ d = -t_c[2]/x_w[2]
+
+ # intersection point
+ x_wd = np.array([(x_w[0]*d),(x_w[1]*d),(x_w[2]*d)])
+ x_p = np.add(x_wd, t_c)
+
+ return x_p
 
 def sliding_window(img, nwindows=15, margin=50, minpix=1, draw_windows=True):
     global left_a, left_b, left_c,right_a, right_b, right_c
@@ -76,11 +115,58 @@ def sliding_window(img, nwindows=15, margin=50, minpix=1, draw_windows=True):
     right_fit_ = np.empty(3)
     out_img = np.dstack((img, img, img))*255
 
-    # find peaks of left and right halves
-    histogram = np.sum(img[img.shape[0]//2:,:], axis=0) # Histrogram
-    midpoint = int(histogram.shape[0]/2)
-    leftx_base = np.argmax(histogram[:midpoint])
-    rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+    # # find peaks of left and right halves
+    # histogram = np.sum(img[img.shape[0]//2:,:], axis=0) # Histrogram
+    # midpoint = int(histogram.shape[0]/2)
+    # leftx_base = np.argmax(histogram[:midpoint])
+    # rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+    #print histogram[:midpoint], leftx_base, rightx_base
+
+
+    #Finds the expected starting points  using K-Means
+    clusters = 2
+
+    # Crop the search space
+    base_size = .1 # random number
+    bottom = (img.shape[0] - int(base_size * img.shape[0]))
+    base = img[bottom:img.shape[0], 0:img.shape[1]]
+
+    # Find white pixels
+    whitePixels = np.argwhere(base == 255)
+
+    # Attempt to run kmeans (the kmeans parameters were not chosen with any sort of hard/soft optimization)
+    try:
+        kmeans = KMeans(n_clusters=clusters, random_state=0, n_init=3, max_iter=150).fit(whitePixels)
+    except:
+    #     # If kmeans fails increase the search space unless it is the whole image, then it fails
+         if base_size > 1:
+             return None
+         else:
+             base_size = base_size * 1.5
+    #         initialPoints(clusters)
+    # conver centers to integer values so can be used as pixel coords
+    centers = [list(imap(int, center)) for center in kmeans.cluster_centers_]
+    # Lamda function to remap the y coordiates of the clusters into the image space
+    increaseY = lambda points: [points[0] + int((1 - base_size) * img.shape[0]), points[1]]
+    # map the centers in terms of the image space
+    modifiedCenters = [increaseY(center) for center in centers]
+
+    leftx_base = modifiedCenters[0][1]
+    rightx_base = modifiedCenters[1][1]
+
+    # # Display the resulting frame
+    #fheight, fwidth = img.shape[:2]
+    #histogram = cv2.resize(histogram,(int(fwidth),int(fheight)))
+    #numpy_horizontal = np.hstack(img, histogram)
+
+    img_c = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    cv2.circle(img_c,(modifiedCenters[0][1],modifiedCenters[0][0]), 18, (0, 0, 255), -1)
+    cv2.circle(img_c,(modifiedCenters[1][1],modifiedCenters[1][0]), 18, (0, 0, 255), -1)
+
+    cv2.startWindowThread()
+    cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('preview', 800,800)
+    cv2.imshow('preview', img_c)
 
     # Set height of windows
     window_height = np.int(img.shape[0]/nwindows)
@@ -217,47 +303,39 @@ def vid_pipeline(img_frame):
     curves_m = (curves[0]+curves[1])/2
     midLane = np.array([np.transpose(np.vstack([curves_m, ploty]))])
 
-    leftLane1 = leftLane[0].astype(int)
-    rightLane1 = rightLane[0].astype(int)
-    midLane1 = midLane[0].astype(int)
+    leftLane_i = leftLane[0].astype(int)
+    rightLane_i = rightLane[0].astype(int)
+    midLane_i = midLane[0].astype(int)
 
-    cv2.polylines(out_img, [leftLane1], 0, (0,255,255), thickness=5, lineType=8, shift=0)
-    cv2.polylines(out_img, [rightLane1], 0, (0,255,255), thickness=5, lineType=8, shift=0)
-    cv2.polylines(out_img, [midLane1], 0, (255,0,255), thickness=5, lineType=8, shift=0)
+    cv2.polylines(out_img, [leftLane_i], 0, (0,255,255), thickness=5, lineType=8, shift=0)
+    cv2.polylines(out_img, [rightLane_i], 0, (0,255,255), thickness=5, lineType=8, shift=0)
+    cv2.polylines(out_img, [midLane_i], 0, (255,0,255), thickness=5, lineType=8, shift=0)
 
     dst_size =(rwidth, rheight)
     invwarp, Minv = inv_perspective_warp(out_img, dst_size, dst, src)
+
+    midPoints = []
+    for i in midLane_i:
+      point_wp = np.array([i[0],i[1],1])
+      midLane_io = np.matmul(Minv, point_wp) # inverse-M*warp_pt
+      midLane_n = np.array([midLane_io[0]/midLane_io[2],midLane_io[1]/midLane_io[2]]) # divide by Z point
+      midLane_n = midLane_n.astype(int)
+      midPoints.append(midLane_n)
 
     # Combine the result with the original image
     img_frame[roi_y:height,roi_x:width] = cv2.addWeighted(img_frame[roi_y:height,roi_x:width],
                                                                        1, invwarp, 0.9, 0)
     result = img_frame
 
-    return midLane1, out_img, result #invwarp
+    return warped_img, midPoints, out_img, result
 
-def camera2world(x_c, t_c, R_c):
- # ray in world coordinates
- #x_c_q = np.array([0,x_c[0],x_c[1],x_c[2]])
- #x_wq_o = np.matmul(R_c, x_c_q)
+def normalizeangle(bearing): # Normalize the bearing
 
- # R_c1 = np.array([[R_c[0]], [R_c[1]], [R_c[2]], [R_c[3]]])
- x_c_q = np.array([[0.0], [x_c[0]], [x_c[1]], [x_c[2]]])
-
- x_wq_o = np.multiply(R_c,x_c_q)
- x_wq = np.multiply(x_wq_o,np.conj(R_c))
- x_w = np.array([x_wq[1],x_wq[2],x_wq[3]])
-
- # distance to the plane
- ## d = dot((t_p - t_c),n_p)/dot(x_w,n_p)
- ## simplified expression assuming plane t_p = [0 0 0]; n_p = [0 0 1];
- d = -t_c[2]/x_w[2]
-
- # intersection point
- x_p = np.add(x_w,t_c)
-
- #print x_p
-
- return x_p
+  if (bearing < -math.pi):
+     bearing += 2 * math.pi
+  elif (bearing > math.pi):
+     bearing -= 2 * math.pi
+  return bearing
 
 def lane_detector():
   topic = 'test_poses'
@@ -269,7 +347,7 @@ def lane_detector():
   #rospy.spin()
   listener = tf.TransformListener()
 
-  home = expanduser("~/ICRA_2020/wheel_tracks_ct.avi")
+  home = expanduser("~/ICRA_2020/wheel_tracks_n.avi")
   cap = cv2.VideoCapture(home)
 
   # Check if camera opened successfully
@@ -280,58 +358,58 @@ def lane_detector():
   while(cap.isOpened()):
 
    # Capture frame-by-frame
-   ret, frame = cap.read()
+   ret, rgb_img = cap.read()
    if ret == True:
 
     while not rospy.is_shutdown():
 
-      #centerLine, warp_img, output = vid_pipeline(frame)
+      warped_img, centerLine, curve_fit_img, output = vid_pipeline(rgb_img)
 
-      # Camera Parmeters
-      # Calcuate 3D World Point from 2D Image Point
-      #p_c = np.array([centerLine[0][0], centerLine[0][1], 1])
-      p_c = np.array([0, 0, 1])
-      global cam_param_receive, K
-
-      if cam_param_receive==True:
-        K_arr = list(K) # Convert tuple into array
-        K_f = np.reshape(K_arr, (3, 3)) # Resize array as 3*3 matrix
-        K_inv = np.linalg.inv(K_f)
-        x_c = np.matmul(K_inv, p_c)
-
-        #rospy.loginfo(rospy.get_caller_id() + "I heard %s", K[0])
-        #cam_param_receive = False
-
-          #try:
-             #(trans,rot) = listener.lookupTransform('map', 'kinect2_rgb_optical_frame', rospy.Time(0))
-          #except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-             #continue
-
-        trans = np.array([0.800, -0.010, 1.750])
-        rot = np.array([0.683, -0.683, 0.183, -0.184])
-
-        t_c = np.array([[trans[0]], [trans[1]], [trans[2]]])
-        R_c = np.array([[rot[0]], [rot[1]], [rot[2]], [rot[3]]])
-        x_p = camera2world(x_c, t_c, R_c)
-        print x_p
-
-
-        # # Used to publish waypoints as pose array so that you can see them in rviz, etc.
-        poses = PoseArray()
-        poses.header.frame_id = "map"
-        poses.header.stamp = rospy.Time.now()
-
-        pose = Pose()
-        pose.position.x = x_p[1]
-        pose.position.y = x_p[0]
-        pose.position.z = 0 #x_p[2]
-        pose.orientation.x = 0
-        pose.orientation.y = 0
-        pose.orientation.z = 0
-        pose.orientation.w = 1
-        poses.poses.append(pose)
-
-        publisher.publish(poses)
+      # # Camera Parmeters
+      # # Calcuate 3D World Point from 2D Image Point
+      # p_c = np.array([centerLine[0][0], centerLine[0][1], 1])
+      # global cam_param_receive, K
+      #
+      # if cam_param_receive==True:
+      #   K_arr = list(K) # Convert tuple into array
+      #   K_f = np.reshape(K_arr, (3, 3)) # Resize array as 3*3 matrix
+      #   K_inv = np.linalg.inv(K_f)
+      #   x_c = np.matmul(K_inv, p_c)
+      #
+      #
+      #   #rospy.loginfo(rospy.get_caller_id() + "I heard %s", K[0])
+      #   #cam_param_receive = False
+      #
+      #     #try:
+      #        #(trans,rot) = listener.lookupTransform('map', 'kinect2_rgb_optical_frame', rospy.Time(0))
+      #     #except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+      #        #continue
+      #
+      #   trans = np.array([0.800, -0.010, 1.750])
+      #   rot = np.array([0.683, -0.683, 0.183, -0.184])
+      #
+      #   t_c = np.array([[trans[0]], [trans[1]], [trans[2]]])
+      #   R_c = np.array([[rot[0]], [rot[1]], [rot[2]], [rot[3]]])
+      #   x_p = camera2world(x_c, t_c, R_c)
+      #   print x_p
+      #
+      #
+      #   # # Used to publish waypoints as pose array so that you can see them in rviz, etc.
+      #   poses = PoseArray()
+      #   poses.header.frame_id = "map"
+      #   poses.header.stamp = rospy.Time.now()
+      #
+      #   pose = Pose()
+      #   pose.position.x = x_p[1]
+      #   pose.position.y = x_p[0]
+      #   pose.position.z = 0 #x_p[2]
+      #   pose.orientation.x = 0
+      #   pose.orientation.y = 0
+      #   pose.orientation.z = 0
+      #   pose.orientation.w = 1
+      #   poses.poses.append(pose)
+      #
+      #   publisher.publish(poses)
 
       # Press Q on keyboard to  exit
       if cv2.waitKey(25) & 0xFF == ord('q'):
