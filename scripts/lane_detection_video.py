@@ -26,6 +26,8 @@ from cv_bridge import CvBridge, CvBridgeError
 from sklearn.cluster import KMeans
 from itertools import imap
 
+prev_modifiedCenters = []
+
 class lane_finder():
     '''
     A class to find lane points given an image that has been inverse perspective mapped and scrubbed of most features
@@ -55,6 +57,7 @@ class lane_finder():
         self.right_a = []
         self.right_b = []
         self.right_c = []
+        self.modifiedCenters = []
         # self.height, self.width = self.image.shape
 
     def perspective_warp(self, img, dst_size, src, dst): # Choose the four vertices
@@ -86,6 +89,7 @@ class lane_finder():
 
     def initialPoints(self, img):
 
+         global prev_modifiedCenters
          # Crop the search space
          bottom = (img.shape[0] - int(self.base_size * img.shape[0]))
          base = img[bottom:img.shape[0], 0:img.shape[1]]
@@ -97,27 +101,32 @@ class lane_finder():
          try:
              kmeans = KMeans(n_clusters=self.clusters, random_state=0, n_init=3, max_iter=150).fit(whitePixels)
          except:
-         #     # If kmeans fails increase the search space unless it is the whole image, then it fails
+              # If kmeans fails increase the search space unless it is the whole image, then it fails
               if self.base_size  > 1:
                   return None
               else:
                   self.base_size  = self.base_size  * 1.5
-                  #return self.initialPoints(self.clusters)
+                  return self.initialPoints(self.clusters)
 
          # conver centers to integer values so can be used as pixel coords
          centers = [list(imap(int, center)) for center in kmeans.cluster_centers_]
          # Lamda function to remap the y coordiates of the clusters into the image space
          increaseY = lambda points: [points[0] + int((1 - self.base_size) * img.shape[0]), points[1]]
-         # map the centers in terms of the image space
-         modifiedCenters = [increaseY(center) for center in centers]
 
-         # check to see if any centers not in white pixel territory
-         #for center in modifiedCenters:
-            #if center not in whitePixels:
-                #return initialPoints(self.clusters + 1)
+         # map the centers in terms of the image space
+         self.modifiedCenters = [increaseY(center) for center in centers]
+
+         #print prev_modifiedCenters, self.modifiedCenters
+
+         if abs(self.modifiedCenters[0][1]-self.modifiedCenters[1][1])<50:
+             print self.modifiedCenters, prev_modifiedCenters
+             self.modifiedCenters = prev_modifiedCenters
+             return self.modifiedCenters
+
+         prev_modifiedCenters = self.modifiedCenters
 
          # return a list of tuples for centers
-         return modifiedCenters
+         return self.modifiedCenters
 
     def sliding_window(self, img, nwindows=15, margin=50, minpix=1, draw_windows=True):
         left_fit_= np.empty(3)
@@ -287,8 +296,7 @@ class lane_finder():
                                                                            1, invwarp, 0.9, 0)
         result = self.image
 
-        # return warped_img, midPoints, out_img, result
-        return result
+        return warped_img, midPoints, out_img, result
 
 if __name__ == '__main__':
    try:
@@ -313,12 +321,12 @@ if __name__ == '__main__':
 
        while not rospy.is_shutdown():
          lf = lane_finder(rgb_img, base_size=.2)
-         final_img = lf.pipeline()
+         warped_img, centerLine, curve_fit_img, output = lf.pipeline()
 
-         cv2.startWindowThread()
-         cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
-         cv2.resizeWindow('preview', 800,800)
-         cv2.imshow('preview', final_img)
+         # cv2.startWindowThread()
+         # cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+         # cv2.resizeWindow('preview', 800,800)
+         # cv2.imshow('preview', curve_fit_img)
 
     #       # Plotting the data
     #       # f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(20, 5))
