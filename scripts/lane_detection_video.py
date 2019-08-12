@@ -35,6 +35,7 @@ class lane_finder():
     '''
 
     def __init__(self, image, base_size=.2):
+        super(lane_finder, self).__init__()
     #### Hyperparameters ####
         self.image = image
         self.vis = image # used for visualization
@@ -62,6 +63,8 @@ class lane_finder():
 
         self.Total_Points = 5
         self.Line_Pts = []
+        self.listener = tf.TransformListener()
+        self.init_transform = geometry_msgs.msg.TransformStamped()
         #self.CameraInfo_sub = rospy.Subscriber("/kinect2_camera/rgb/camera_info", CameraInfo, self.imagecaminfoCallback)
 
     # def imagecaminfoCallback(self, data):
@@ -331,7 +334,10 @@ class lane_finder():
          poses.header.frame_id = "map"
          poses.header.stamp = rospy.Time.now()
 
-         for pt in range(self.Total_Points):
+          #self.Total_Points
+         Total_Points = 5
+
+         for pt in range(Total_Points):
 
            # Line segment points
            seg_x = int((centerLine[0][0]*(1-(float(pt)/self.Total_Points))) + (centerLine[len(centerLine)-1][0]*(float(pt)/self.Total_Points)))
@@ -357,15 +363,15 @@ class lane_finder():
            poses.poses.append(Pose(position,orientation))
            return poses
 
-
 if __name__ == '__main__':
    try:
      publisher = rospy.Publisher('test_poses', PoseArray)
      rospy.init_node('lane_detector_video', anonymous=True)
 
-     global cam_param_receive
-     listener = tf.TransformListener()
-     init_transform = geometry_msgs.msg.TransformStamped()
+     print("importing pygame")
+     import pygame
+     print("initialising pygame")
+     pygame.init()
 
      #listener = tf.TransformListener( )
      home = expanduser("~/ICRA_2020/wheel_tracks_n.avi")
@@ -381,32 +387,36 @@ if __name__ == '__main__':
       # Capture frame-by-frame
       ret, rgb_img = cap.read()
       if ret == True:
-
        while not rospy.is_shutdown():
          lf = lane_finder(rgb_img, base_size=.2)
          warped_img, centerLine, curve_fit_img, output = lf.pipeline()
 
          if lf.cam_param_receive==True:
 
-             try:
+             #try:
                 # wait for the transform to be found
-                #listener.waitForTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0),rospy.Duration(5.0))
-                (trans,rot) = listener.lookupTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0))
+                #lf.listener.waitForTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0)), rospy.Duration(3.0))
+                #(trans,rot) = lf.listener.lookupTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0))
 
-             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                  continue
+             #except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                  #continue
 
-             t_c = np.array([[trans[0]], [trans[1]], [trans[2]]])
-             R_c = np.quaternion(rot[3], rot[0], rot[1], rot[2]) # Format: (w,x,y,z)
+             #t_c = np.array([[trans[0]], [trans[1]], [trans[2]]])
+             t_c = np.array([[0.8], [-0.01], [1.75]])
+
+             #R_c = np.quaternion(rot[3], rot[0], rot[1], rot[2]) # Format: (w,x,y,z)
+             R_c = np.quaternion(0.183555767046896, -0.683012709411116, 0.682867188735805, -0.183011807582932) # Format: (w,x,y,z)
+             print t_c, R_c
 
              K_arr = [[1065, 0, 540],
                       [0, 1065, 980],
                       [0, 0, 1]]
 
+             #lf.publish_vector(centerLine, t_c, R_c, K_arr)
              poses = lf.publish_vector(centerLine, t_c, R_c, K_arr)
 
              # Publish the vector of poses
-             publisher.publish(poses)
+             #publisher.publish(poses)
 
          # cv2.startWindowThread()
          # cv2.namedWindow('preview', cv2.WINDOW_NORMAL)

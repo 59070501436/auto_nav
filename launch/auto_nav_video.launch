@@ -65,6 +65,6 @@
   <node pkg="auto_nav" name="lane_detector_video" type="lane_detection_video.py" output="screen" />
 
   <!-- Display -->
-  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find auto_nav)/rviz/custom_rviz_video.rviz" />
+  <!--node pkg="rviz" type="rviz" name="rviz" args="-d $(find auto_nav)/rviz/custom_rviz_video.rviz" /-->
 
 </launch>
