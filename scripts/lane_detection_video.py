@@ -35,7 +35,7 @@ class lane_finder():
     '''
 
     def __init__(self, image, base_size=.2):
-        super(lane_finder, self).__init__()
+        #super(lane_finder, self).__init__()
     #### Hyperparameters ####
         self.image = image
         self.vis = image # used for visualization
@@ -368,10 +368,10 @@ if __name__ == '__main__':
      publisher = rospy.Publisher('test_poses', PoseArray)
      rospy.init_node('lane_detector_video', anonymous=True)
 
-     print("importing pygame")
-     import pygame
-     print("initialising pygame")
-     pygame.init()
+     # print("importing pygame")
+     # import pygame
+     # print("initialising pygame")
+     # pygame.init()
 
      #listener = tf.TransformListener( )
      home = expanduser("~/ICRA_2020/wheel_tracks_n.avi")
@@ -453,17 +453,17 @@ if __name__ == '__main__':
     #       # plt.show()
     #       rospy.sleep(1)  # sleep for one second
 
-         # Press Q on keyboard to  exit
-         if cv2.waitKey(25) & 0xFF == ord('q'):
-            break
-         else:  # Break the loop
-            break
-
-         # When everything done, release the video capture object
-         cap.release()
-
-         # Closes all the frames
-         cv2.destroyAllWindows()
+         # # Press Q on keyboard to  exit
+         # if cv2.waitKey(25) & 0xFF == ord('q'):
+         #    break
+         # else:  # Break the loop
+         #    break
+         #
+         # # When everything done, release the video capture object
+         # cap.release()
+         #
+         # # Closes all the frames
+         # cv2.destroyAllWindows()
 
    except rospy.ROSInterruptException:
      pass
