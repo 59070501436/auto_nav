@@ -9,6 +9,7 @@ import os
 import sys
 import roslib
 import matplotlib.pyplot as plt
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide" # Hides the pygame version, welcome msg
 from moviepy.editor import VideoFileClip
 from os.path import expanduser
 import pickle
@@ -65,6 +66,8 @@ class lane_finder():
         self.Line_Pts = []
         self.listener = tf.TransformListener()
         self.init_transform = geometry_msgs.msg.TransformStamped()
+        self.pub_poses = rospy.Publisher('test_poses', PoseArray)
+
         #self.CameraInfo_sub = rospy.Subscriber("/kinect2_camera/rgb/camera_info", CameraInfo, self.imagecaminfoCallback)
 
     # def imagecaminfoCallback(self, data):
@@ -117,6 +120,14 @@ class lane_finder():
      x_p = np.add(x_wd, t_c)
 
      return x_p
+
+    def normalizeangle(self, bearing): # Normalize the bearing
+
+        if (bearing < -math.pi):
+               bearing += 2 * math.pi
+        elif (bearing > math.pi):
+               bearing -= 2 * math.pi
+        return bearing
 
     def initialPoints(self, img):
 
@@ -357,15 +368,15 @@ class lane_finder():
 
            if pt>0:
                 yaw = math.atan2(self.Line_Pts[pt-1][1]-self.Line_Pts[pt][1],self.Line_Pts[pt-1][0]-self.Line_Pts[pt][0])
-                quaternion_c = tf.transformations.quaternion_from_euler(0, 0, normalizeangle(yaw)) #math.pi
+                quaternion_c = tf.transformations.quaternion_from_euler(0, 0, self.normalizeangle(yaw)) #math.pi
                 orientation = np.quaternion(quaternion_c[3],quaternion_c[0],quaternion_c[1],quaternion_c[2])
 
            poses.poses.append(Pose(position,orientation))
-           return poses
+
+         return poses
 
 if __name__ == '__main__':
    try:
-     publisher = rospy.Publisher('test_poses', PoseArray)
      rospy.init_node('lane_detector_video', anonymous=True)
 
      # print("importing pygame")
@@ -393,30 +404,26 @@ if __name__ == '__main__':
 
          if lf.cam_param_receive==True:
 
-             #try:
-                # wait for the transform to be found
+             try:
+                #wait for the transform to be found
                 #lf.listener.waitForTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0)), rospy.Duration(3.0))
-                #(trans,rot) = lf.listener.lookupTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0))
+                (trans,rot) = lf.listener.lookupTransform("map", "kinect2_rgb_optical_frame", rospy.Time(0))
 
-             #except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                  #continue
+             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                  continue
 
-             #t_c = np.array([[trans[0]], [trans[1]], [trans[2]]])
-             t_c = np.array([[0.8], [-0.01], [1.75]])
+             t_c = np.array([[trans[0]], [trans[1]], [trans[2]]])
+             R_c = np.quaternion(rot[3], rot[0], rot[1], rot[2]) # Format: (w,x,y,z)
 
-             #R_c = np.quaternion(rot[3], rot[0], rot[1], rot[2]) # Format: (w,x,y,z)
-             R_c = np.quaternion(0.183555767046896, -0.683012709411116, 0.682867188735805, -0.183011807582932) # Format: (w,x,y,z)
-             print t_c, R_c
-
-             K_arr = [[1065, 0, 540],
-                      [0, 1065, 980],
+             K_arr = [[1065, 0, 980],
+                      [0, 1065, 540],
                       [0, 0, 1]]
 
              #lf.publish_vector(centerLine, t_c, R_c, K_arr)
              poses = lf.publish_vector(centerLine, t_c, R_c, K_arr)
 
              # Publish the vector of poses
-             #publisher.publish(poses)
+             lf.pub_poses.publish(poses)
 
          # cv2.startWindowThread()
          # cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
@@ -459,8 +466,8 @@ if __name__ == '__main__':
          # else:  # Break the loop
          #    break
          #
-         # # When everything done, release the video capture object
-         # cap.release()
+     # When everything done, release the video capture object
+     cap.release()
          #
          # # Closes all the frames
          # cv2.destroyAllWindows()
