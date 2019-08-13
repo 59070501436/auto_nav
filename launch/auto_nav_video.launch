@@ -64,7 +64,19 @@
   <!-- Lane Detector -->
   <node pkg="auto_nav" name="lane_detector_video" type="lane_detection_video.py" output="screen" />
 
+  <!-- Move Base -->
+  <include file="$(find auto_nav)/launch/move_base.launch" />
+
+  <!-- Mongodb Server  -->
+  <!--include file="$(find mongodb_store)/launch/mongodb_store.launch">
+    <arg name="db_path" value="$(arg db_path)"/>
+  </include>
+
+  <include file="$(find topological_navigation)/launch/topological_navigation.launch" >
+   <arg name="map" value="$(arg topo_map)" />
+ </include-->
+
   <!-- Display -->
-  <!--node pkg="rviz" type="rviz" name="rviz" args="-d $(find auto_nav)/rviz/custom_rviz_video.rviz" /-->
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find auto_nav)/rviz/custom_rviz_video.rviz" />
 
 </launch>

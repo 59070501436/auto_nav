@@ -66,7 +66,7 @@ class lane_finder():
         self.Line_Pts = []
         self.listener = tf.TransformListener()
         self.init_transform = geometry_msgs.msg.TransformStamped()
-        self.pub_poses = rospy.Publisher('test_poses', PoseArray)
+        self.pub_poses = rospy.Publisher('vector_poses', PoseArray)
 
         #self.CameraInfo_sub = rospy.Subscriber("/kinect2_camera/rgb/camera_info", CameraInfo, self.imagecaminfoCallback)
 
