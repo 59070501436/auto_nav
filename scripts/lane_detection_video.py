@@ -62,7 +62,7 @@ class lane_finder():
         self.right_c = []
         self.modifiedCenters = []
 
-        self.Total_Points = 5
+        self.Total_Points = 6
         self.Line_Pts = []
         self.listener = tf.TransformListener()
         self.init_transform = geometry_msgs.msg.TransformStamped()
@@ -345,10 +345,7 @@ class lane_finder():
          poses.header.frame_id = "map"
          poses.header.stamp = rospy.Time.now()
 
-          #self.Total_Points
-         Total_Points = 5
-
-         for pt in range(Total_Points):
+         for pt in range(self.Total_Points):
 
            # Line segment points
            seg_x = int((centerLine[0][0]*(1-(float(pt)/self.Total_Points))) + (centerLine[len(centerLine)-1][0]*(float(pt)/self.Total_Points)))
@@ -360,18 +357,14 @@ class lane_finder():
            x_c_norm = LA.norm(x_c, axis=0)
            x_c = x_c/x_c_norm # Normalize the vector
            x_p = self.camera2world(x_c, t_c, R_c)
-
            self.Line_Pts.append([x_p[0],x_p[1]])
 
-           position = Point(x_p[0], x_p[1], x_p[2])
-           orientation = np.quaternion(1,0,0,0)
-
            if pt>0:
-                yaw = math.atan2(self.Line_Pts[pt-1][1]-self.Line_Pts[pt][1],self.Line_Pts[pt-1][0]-self.Line_Pts[pt][0])
-                quaternion_c = tf.transformations.quaternion_from_euler(0, 0, self.normalizeangle(yaw)) #math.pi
-                orientation = np.quaternion(quaternion_c[3],quaternion_c[0],quaternion_c[1],quaternion_c[2])
-
-           poses.poses.append(Pose(position,orientation))
+              position = Point(self.Line_Pts[pt][0], self.Line_Pts[pt][1], 0) # Position
+              yaw = math.atan2(self.Line_Pts[pt-1][1]-self.Line_Pts[pt][1],self.Line_Pts[pt-1][0]-self.Line_Pts[pt][0])
+              quaternion_c = tf.transformations.quaternion_from_euler(0, 0, self.normalizeangle(yaw))
+              orientation = np.quaternion(quaternion_c[3], quaternion_c[0], quaternion_c[1], quaternion_c[2])
+              poses.poses.append(Pose(position, orientation))
 
          return poses
 
@@ -379,12 +372,6 @@ if __name__ == '__main__':
    try:
      rospy.init_node('lane_detector_video', anonymous=True)
 
-     # print("importing pygame")
-     # import pygame
-     # print("initialising pygame")
-     # pygame.init()
-
-     #listener = tf.TransformListener( )
      home = expanduser("~/ICRA_2020/wheel_tracks_n.avi")
      cap = cv2.VideoCapture(home)
 

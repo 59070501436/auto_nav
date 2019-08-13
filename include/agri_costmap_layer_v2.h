@@ -15,7 +15,7 @@
 #include "opencv2/highgui/highgui.hpp"
 
 // ROS message includes
-#include <auto_nav/sub_goal.h>
+// #include <auto_nav/sub_goal.h>
 #include <std_msgs/String.h>
 #include <geometry_msgs/PoseArray.h>
 #include <visualization_msgs/Marker.h>  // To get the line end points
@@ -41,7 +41,7 @@ namespace custom_layer
 
     virtual void vecposeCallback (const geometry_msgs::PoseArray::ConstPtr& vec_msg); // Line points
 
-    virtual bool change_row(auto_nav::sub_goal::Request &req, auto_nav::sub_goal::Response &res);
+    // virtual bool change_row(auto_nav::sub_goal::Request &req, auto_nav::sub_goal::Response &res);
 
     bool initParameters();
 

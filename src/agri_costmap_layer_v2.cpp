@@ -7,7 +7,7 @@ namespace custom_layer{
 AgriCostmapLayer_v2::AgriCostmapLayer_v2() {
 
   vec_sub = nh.subscribe("vector_poses", 100, &AgriCostmapLayer_v2::vecposeCallback, this);
-  costmapService = nh.advertiseService("costmaps_service", &AgriCostmapLayer_v2::change_row, this);
+  // costmapService = nh.advertiseService("costmaps_service", &AgriCostmapLayer_v2::change_row, this);
   curr_node_sub = nh.subscribe("current_node", 100, &AgriCostmapLayer_v2::currnodeCallback, this);
 
   ros::spinOnce();
@@ -16,7 +16,7 @@ AgriCostmapLayer_v2::AgriCostmapLayer_v2() {
 
 AgriCostmapLayer_v2::~AgriCostmapLayer_v2()
 {
-  costmapService.shutdown();
+  // costmapService.shutdown();
   if(dsrv_) delete dsrv_;
   dsrv_ = 0;
 }
@@ -108,10 +108,10 @@ void AgriCostmapLayer_v2::vecposeCallback (const geometry_msgs::PoseArray::Const
 } // Vec callback
 
 // Reached end of row
-bool AgriCostmapLayer_v2::change_row(auto_nav::sub_goal::Request &req, auto_nav::sub_goal::Response &res){
-     row_follow = req.counter;
-     return true;
-}
+// bool AgriCostmapLayer_v2::change_row(auto_nav::sub_goal::Request &req, auto_nav::sub_goal::Response &res){
+//      row_follow = req.counter;
+//      return true;
+// }
 
 void AgriCostmapLayer_v2::reconfigureCB(auto_nav::custom_costmap_paramsConfig &config, uint32_t level){
 
