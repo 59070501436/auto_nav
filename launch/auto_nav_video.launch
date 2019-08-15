@@ -68,13 +68,13 @@
   <include file="$(find auto_nav)/launch/move_base.launch" />
 
   <!-- Mongodb Server  -->
-  <!--include file="$(find mongodb_store)/launch/mongodb_store.launch">
+  <include file="$(find mongodb_store)/launch/mongodb_store.launch">
     <arg name="db_path" value="$(arg db_path)"/>
   </include>
 
   <include file="$(find topological_navigation)/launch/topological_navigation.launch" >
    <arg name="map" value="$(arg topo_map)" />
- </include-->
+ </include>
 
   <!-- Display -->
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find auto_nav)/rviz/custom_rviz_video.rviz" />

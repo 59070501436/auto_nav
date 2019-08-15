@@ -1,5 +1,5 @@
 local_costmap:
-  update_frequency: 1.0 #default: 5.0
+  update_frequency: 2.0 #default: 5.0
   publish_frequency: 2.0 #default: 2.0
   static_map: false
   rolling_window: true
@@ -10,4 +10,4 @@ local_costmap:
   plugins:
     - {name: obstacle_layer, type: "costmap_2d::ObstacleLayer"}
     - {name: local_inflation_layer, type: "costmap_2d::InflationLayer"}
-    - {name: agri_costmap_layer, type: "custom_layer::AgriCostmapLayer_v2"}
+    #- {name: agri_costmap_layer, type: "custom_layer::AgriCostmapLayer_v2"}

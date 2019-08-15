@@ -412,10 +412,10 @@ if __name__ == '__main__':
              # Publish the vector of poses
              lf.pub_poses.publish(poses)
 
-         # cv2.startWindowThread()
-         # cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
-         # cv2.resizeWindow('preview', 800,800)
-         # cv2.imshow('preview', curve_fit_img)
+             cv2.startWindowThread()
+             cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+             cv2.resizeWindow('preview', 800,800)
+             cv2.imshow('preview', output)
 
     #       # Plotting the data
     #       # f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(20, 5))
