@@ -160,7 +160,7 @@ class lane_finder():
                   return None
               else:
                   self.base_size  = self.base_size  * 1.5
-                  return self.initialPoints(self.clusters)
+                  return self.initialPoints(self.image)
 
          # conver centers to integer values so can be used as pixel coords
          centers = [list(imap(int, center)) for center in kmeans.cluster_centers_]
@@ -185,7 +185,7 @@ class lane_finder():
         right_fit_ = np.empty(3)
         out_img = np.dstack((img, img, img))*255
 
-        modifiedCenters = self.initialPoints(img)
+        modifiedCenters = self.initialPoints(img) # Need to have a look if fails
         leftx_base = modifiedCenters[0][1]
         rightx_base = modifiedCenters[1][1]
 

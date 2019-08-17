@@ -173,7 +173,7 @@ namespace custom_layer{
    }
 
    for (int k = 0; k < P.size(); k++) // Update the costs of each grid cell
-    {
+   {
 
      if(master_grid.worldToMap(P[k].x, P[k].y, mx, my)) // Update the line points as grid cells
      {
@@ -185,83 +185,83 @@ namespace custom_layer{
 
    } // Update the costs of each grid cell
 
-    for(int w = 1; w < x_.size(); w++) // revert the size of the circle co-ordinates array for next iteration
-    {
-     x_[w].resize(0); y_[w].resize(0);
-    }
-
-    std::vector<cv::Point2f> topLeft, topRight, bottomLeft, bottomRight;
-    topLeft.resize(0); topRight.resize(0); bottomLeft.resize(0); bottomRight.resize(0);
-    std::vector<cv::Point2f> l1, l2;
-    std::vector<double> x_t, y_t;
-
-    for(int q = 0; q < P.size(); q++) // Line Segments for L1 and L2
-    {
-
-      for(int n = 1; n < Total_Layers; n++) // Each Costmap Layer
-      {
-
-      // Create the boundaries for the designated radius
-      topLeft.push_back(cv::Point2f(P[q].x+n*costmap_radius, P[q].y+n*costmap_radius));
-      topRight.push_back(cv::Point2f(P[q].x+n*costmap_radius, P[q].y-n*costmap_radius));
-      bottomLeft.push_back(cv::Point2f(P[q].x-n*costmap_radius, P[q].y+n*costmap_radius));
-      bottomRight.push_back(cv::Point2f(P[q].x-n*costmap_radius, P[q].y-n*costmap_radius));
-
-      l1.resize(0); l2.resize(0); x_t.resize(0); y_t.resize(0);
-
-      // Find the circle co-ordinates according to costmap radius
-      for(int r = 0; r < pts; r++) // rect co-ordinates
-      {
-          l1.push_back((topLeft.back()*(1-(float(r)/pts)))+(bottomLeft.back()*(float(r)/pts)));
-          l2.push_back((topRight.back()*(1-(float(r)/pts)))+(bottomRight.back()*(float(r)/pts)));
-
-          for(int u = 0; u < pts; u++)
-            {
-              x_t.push_back((l1.back().x*(1-(float(u)/pts)))+(l2.back().x*(float(u)/pts)));
-              y_t.push_back((l1.back().y*(1-(float(u)/pts)))+(l2.back().y*(float(u)/pts)));
-
-              if(sqrt(pow(x_t.back()-P[q].x,2)+pow(y_t.back()-P[q].y,2))<(n*costmap_radius)) // circle co-ordinates
-              {
-                 x_[n].push_back(x_t.back());
-                 y_[n].push_back(y_t.back());
-              }
-
-             }
-
-      } // rect co-ordinates
-
-     } // Each Costmap Layer
-
-    } // Line Segments for L1 and L2
-
-     for(int n = 1; n < Total_Layers; n++) // Each Costmap Layer
-     {
-
-      if((x_[n].size()>0)&&(y_[n].size()>0)) // UpdateBounds check
-       {
-
-         // Assign the cost from circle co-ordinates
-           for(int i = 0; i < x_[n].size(); i++)
-             {
-
-               //for(int j = 0; j < y_[n].size(); j++)
-                 //{
-
-                   if(master_grid.worldToMap(x_[n][i], y_[n][i], mx, my)) // Update the line points as grid cells
-                   {
-                     if(master_grid.getCost(mx, my)==FREE_SPACE)
-                      {
-                       master_grid.setCost(mx, my, Layer[n]);
-                      }
-                   }
-
-                 //}
-
-             }
-
-       } // UpdateBounds check
-
-     } // Each Costmap Layer
+    // for(int w = 1; w < x_.size(); w++) // revert the size of the circle co-ordinates array for next iteration
+    // {
+    //  x_[w].resize(0); y_[w].resize(0);
+    // }
+    //
+    // std::vector<cv::Point2f> topLeft, topRight, bottomLeft, bottomRight;
+    // topLeft.resize(0); topRight.resize(0); bottomLeft.resize(0); bottomRight.resize(0);
+    // std::vector<cv::Point2f> l1, l2;
+    // std::vector<double> x_t, y_t;
+    //
+    // for(int q = 0; q < P.size(); q++) // Line Segments for L1 and L2
+    // {
+    //
+    //   for(int n = 1; n < Total_Layers; n++) // Each Costmap Layer
+    //   {
+    //
+    //   // Create the boundaries for the designated radius
+    //   topLeft.push_back(cv::Point2f(P[q].x+n*costmap_radius, P[q].y+n*costmap_radius));
+    //   topRight.push_back(cv::Point2f(P[q].x+n*costmap_radius, P[q].y-n*costmap_radius));
+    //   bottomLeft.push_back(cv::Point2f(P[q].x-n*costmap_radius, P[q].y+n*costmap_radius));
+    //   bottomRight.push_back(cv::Point2f(P[q].x-n*costmap_radius, P[q].y-n*costmap_radius));
+    //
+    //   l1.resize(0); l2.resize(0); x_t.resize(0); y_t.resize(0);
+    //
+    //   // Find the circle co-ordinates according to costmap radius
+    //   for(int r = 0; r < pts; r++) // rect co-ordinates
+    //   {
+    //       l1.push_back((topLeft.back()*(1-(float(r)/pts)))+(bottomLeft.back()*(float(r)/pts)));
+    //       l2.push_back((topRight.back()*(1-(float(r)/pts)))+(bottomRight.back()*(float(r)/pts)));
+    //
+    //       for(int u = 0; u < pts; u++)
+    //         {
+    //           x_t.push_back((l1.back().x*(1-(float(u)/pts)))+(l2.back().x*(float(u)/pts)));
+    //           y_t.push_back((l1.back().y*(1-(float(u)/pts)))+(l2.back().y*(float(u)/pts)));
+    //
+    //           if(sqrt(pow(x_t.back()-P[q].x,2)+pow(y_t.back()-P[q].y,2))<(n*costmap_radius)) // circle co-ordinates
+    //           {
+    //              x_[n].push_back(x_t.back());
+    //              y_[n].push_back(y_t.back());
+    //           }
+    //
+    //          }
+    //
+    //   } // rect co-ordinates
+    //
+    //  } // Each Costmap Layer
+    //
+    // } // Line Segments for L1 and L2
+    //
+    //  for(int n = 1; n < Total_Layers; n++) // Each Costmap Layer
+    //  {
+    //
+    //   if((x_[n].size()>0)&&(y_[n].size()>0)) // UpdateBounds check
+    //    {
+    //
+    //      // Assign the cost from circle co-ordinates
+    //        for(int i = 0; i < x_[n].size(); i++)
+    //          {
+    //
+    //            //for(int j = 0; j < y_[n].size(); j++)
+    //              //{
+    //
+    //                if(master_grid.worldToMap(x_[n][i], y_[n][i], mx, my)) // Update the line points as grid cells
+    //                {
+    //                  if(master_grid.getCost(mx, my)==FREE_SPACE)
+    //                   {
+    //                    master_grid.setCost(mx, my, Layer[n]);
+    //                   }
+    //                }
+    //
+    //              //}
+    //
+    //          }
+    //
+    //    } // UpdateBounds check
+    //
+    //  } // Each Costmap Layer
 
    } // For loop for each vector poses
 
