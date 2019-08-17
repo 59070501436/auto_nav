@@ -62,7 +62,7 @@
   </node>
 
   <!-- Lane Detector -->
-  <node pkg="auto_nav" name="lane_detector_video" type="lane_detection_video.py" output="screen" />
+  <node pkg="auto_nav" name="lane_detector_video" type="lane_detector_video.py" output="screen" />
 
   <!-- Move Base -->
   <include file="$(find auto_nav)/launch/move_base.launch" />

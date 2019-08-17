@@ -177,9 +177,9 @@ add_library(agri_costmap_layer_v2 src/agri_costmap_layer_v2.cpp)
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 install(PROGRAMS
-  scripts/lane_detection.py
-  scripts/lane_detection_image.py
-  scripts/lane_detection_video.py
+  scripts/lane_detector.py
+  scripts/lane_detector_image.py
+  scripts/lane_detector_video.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

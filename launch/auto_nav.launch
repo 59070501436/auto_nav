@@ -85,7 +85,7 @@
  </include>
 
   <!-- Lane Detector -->
-  <!--node pkg="auto_nav" name="lane_detection" type="lane_detection.py" output="screen" /-->
+  <!-- <node pkg="auto_nav" name="lane_detection" type="lane_detector.py" output="screen" /> -->
 
   <!-- Display -->
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find auto_nav)/rviz/custom_rviz.rviz" />
