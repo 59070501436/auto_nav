@@ -380,7 +380,23 @@ class lane_finder():
          poses.header.stamp = rospy.Time.now()
 
          #poly_pts = MarkerArray()
-         line_strip = self.make_marker(r=1, g=0.5, b=0.2, a=0.3)
+         #line_strip = self.make_marker(r=1, g=0.5, b=0.2, a=0.3)
+
+         line_strip = Marker()
+         line_strip.action = Marker.ADD
+         line_strip.header.frame_id = 'map'
+         line_strip.header.stamp = rospy.Time.now()
+         line_strip.ns = 'marker_test_%d'
+         line_strip.id = 0
+         line_strip.type = Marker.LINE_STRIP
+         line_strip.pose.orientation.w = 1
+         line_strip.scale.x = 0.1
+         line_strip.scale.y = 0.1
+         line_strip.scale.z = 0.2
+         line_strip.color.r = r
+         line_strip.color.g = g
+         line_strip.color.b = b
+         line_strip.color.a = a
          for pt in range(len(centerLine)):
            p = Point()
            p.x = centerLine[pt][0]
