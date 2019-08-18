@@ -129,13 +129,13 @@
         <enable_wind>0</enable_wind>
         <kinematic>0</kinematic>
       </link>
-      <pose frame=''>0.016485 -2.18241 0 0 -0 0</pose>
+      <pose frame=''>2.44586 -0.880636 0 0 -0 0</pose>
     </model>
     <state world_name='default'>
-      <sim_time>58 408000000</sim_time>
-      <real_time>59 254732182</real_time>
-      <wall_time>1565038391 211572437</wall_time>
-      <iterations>58408</iterations>
+      <sim_time>275 437000000</sim_time>
+      <real_time>278 406917890</real_time>
+      <wall_time>1566075331 36639395</wall_time>
+      <iterations>275437</iterations>
       <model name='ground_plane'>
         <pose frame=''>0 0 0 0 -0 0</pose>
         <scale>1 1 1</scale>
@@ -147,10 +147,10 @@
         </link>
       </model>
       <model name='tracks_textures'>
-        <pose frame=''>0 0 0 0 -0 0</pose>
+        <pose frame=''>5.076 4.8 0 0 -0 0.05</pose>
         <scale>1 1 1</scale>
         <link name='tracks'>
-          <pose frame=''>-1.54 -2 0.025 0 -0 0</pose>
+          <pose frame=''>3.63788 2.72553 0.025 0 -0 0.05</pose>
           <velocity>0 0 0 0 -0 0</velocity>
           <acceleration>0 0 0 0 -0 0</acceleration>
           <wrench>0 0 0 0 -0 0</wrench>
@@ -162,7 +162,7 @@
     </state>
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose frame=''>87.0638 -1.2817 118.573 0 1.00364 -2.94299</pose>
+        <pose frame=''>-49.1031 3.99132 66.3726 0 0.951642 -0.054988</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>

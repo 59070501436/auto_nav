@@ -26,6 +26,7 @@ import quaternion
 from cv_bridge import CvBridge, CvBridgeError
 from sklearn.cluster import KMeans
 from itertools import imap
+from visualization_msgs.msg import Marker, MarkerArray
 
 prev_modifiedCenters = []
 rgb_img = Image()
@@ -69,6 +70,8 @@ class lane_finder():
         self.init_transform = geometry_msgs.msg.TransformStamped()
 
         self.pub_poses = rospy.Publisher('vector_poses', PoseArray) # Publishers
+        self.marker_pub = rospy.Publisher('marker_test', Marker)
+
         self.CameraInfo_sub = rospy.Subscriber("/kinect2_camera/rgb/camera_info", CameraInfo, self.imagecaminfoCallback)
         self.img_sub = rospy.Subscriber("/kinect2_camera/rgb/image_color_rect", Image, self.imageCallback)
 
@@ -87,6 +90,25 @@ class lane_finder():
         except CvBridgeError as e:
           print(e)
         self.img_receive = True
+
+    def make_marker(self, r, g, b, a):
+        # make a visualization marker array for the occupancy grid
+        m = Marker()
+        m.action = Marker.ADD
+        m.header.frame_id = 'map'
+        m.header.stamp = rospy.Time.now()
+        m.ns = 'marker_test_%d'
+        m.id = 0
+        m.type = Marker.LINE_STRIP
+        m.pose.orientation.w = 1
+        m.scale.x = 0.1
+        m.scale.y = 0.1
+        m.scale.z = 0.2
+        m.color.r = r
+        m.color.g = g
+        m.color.b = b
+        m.color.a = a
+        return m
 
     def perspective_warp(self, img, dst_size, src, dst): # Choose the four vertices
 
@@ -357,6 +379,16 @@ class lane_finder():
          poses.header.frame_id = "map"
          poses.header.stamp = rospy.Time.now()
 
+         #poly_pts = MarkerArray()
+         line_strip = self.make_marker(r=1, g=0.5, b=0.2, a=0.3)
+         for pt in range(len(centerLine)):
+           p = Point()
+           p.x = centerLine[pt][0]
+           p.y = centerLine[pt][1]
+           line_strip.points.push_back(p)
+
+         self.marker_pub.publish(line_strip)
+
          for pt in range(self.Total_Points):
 
            # Line segment points
@@ -383,6 +415,7 @@ class lane_finder():
 if __name__ == '__main__':
    try:
      rospy.init_node('lane_detector', anonymous=True)
+     d = 0
 
      while not rospy.is_shutdown():
        lf = lane_finder(base_size=0.2)
@@ -404,12 +437,15 @@ if __name__ == '__main__':
           # Publish the vector of poses
           lf.pub_poses.publish(poses)
 
-          # visualization
-          cv2.startWindowThread()
-          cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
-          cv2.resizeWindow('preview', 800,800)
-          cv2.imshow("preview", output) #lf.image
-          cv2.waitKey(1)
+          # # visualization
+          # cv2.startWindowThread()
+          # cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+          # cv2.resizeWindow('preview', 800,800)
+          # cv2.imshow("preview", output) #lf.image
+          # cv2.waitKey(1)
+          # filename = "/home/saga/ICRA_2020/preview_%d.jpg"%d
+          # cv2.imwrite(filename, output)
+          # d+=1
 
           lf.img_receive = False
           rospy.sleep(0.5)  # sleep for one second
