@@ -1,4 +1,30 @@
 
+# # Publish the vector of poses
+# lf.pub_poses.publish(poses)
+
+# for pt in range(self.Total_Points):
+#
+#   # Line segment points
+#   seg_x = int((centerLine[0][0]*(1-(float(pt)/self.Total_Points))) + (centerLine[len(centerLine)-1][0]*(float(pt)/self.Total_Points)))
+#   seg_y = int((centerLine[0][1]*(1-(float(pt)/self.Total_Points))) + (centerLine[len(centerLine)-1][1]*(float(pt)/self.Total_Points)))
+#
+#   # Calcuate 3D World Point from 2D Image Point
+#   p_c = np.array([seg_x+self.roi[0], seg_y+self.roi[1], 1])
+#   x_c = np.linalg.inv(self.K).dot(p_c) # Applying Intrinsic Parameters
+#   x_c_norm = LA.norm(x_c, axis=0)
+#   x_c = x_c/x_c_norm # Normalize the vector
+#   x_p = self.camera2world(x_c, t_c, R_c)
+#   self.Line_Pts.append([x_p[0],x_p[1]])
+#
+#   if pt>0:
+#      position = Point(self.Line_Pts[pt][0], self.Line_Pts[pt][1], 0) # Position
+#      yaw = math.atan2(self.Line_Pts[pt-1][1]-self.Line_Pts[pt][1],self.Line_Pts[pt-1][0]-self.Line_Pts[pt][0])
+#      quaternion_c = tf.transformations.quaternion_from_euler(0, 0, self.normalizeangle(yaw))
+#      orientation = np.quaternion(quaternion_c[3], quaternion_c[0], quaternion_c[1], quaternion_c[2])
+#      poses.poses.append(Pose(position, orientation))
+#
+# return poses
+
 # # find peaks of left and right halves
 # histogram = np.sum(img[img.shape[0]//2:,:], axis=0) # Histrogram
 # midpoint = int(histogram.shape[0]/2)
