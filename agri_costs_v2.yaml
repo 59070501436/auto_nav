@@ -73,7 +73,7 @@ windows:
   - sleep 1; if [ -r "$BASE_CONFIG_DIR/robots/$ROBOT_NAME.yaml" ]; then rosparam load "$BASE_CONFIG_DIR/robots/$ROBOT_NAME.yaml"; fi
 - name: robot
   panes:
-  - sleep 1; roslaunch auto_nav auto_nav.launch simple_sim:=$USE_SIM with_teleoperation:=true world_name:=$GAZEBO_WORLD use_gui:=$USE_GUI enable_odom_tf:=true
+  - sleep 1; roslaunch auto_nav auto_nav.launch simple_sim:=$USE_SIM with_teleoperation:=true use_gui:=$USE_GUI enable_odom_tf:=true
   #- sleep 1; if ! $USE_SIM; then roslaunch rasberry_bringup xsens_driver.launch; fi
   #- sleep 1; rosrun map_server map_server $HOME/rasberry_ws/src/RASberry/rasberry_agricultural_costmaps/maps/frogn_fields.yaml
 #- name: localisation
