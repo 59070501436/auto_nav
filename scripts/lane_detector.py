@@ -68,9 +68,21 @@ class lane_finder():
         self.R_c = []
         self.listener = tf.TransformListener()
         self.init_transform = geometry_msgs.msg.TransformStamped()
+        self.line_strip = Marker()
+        self.line_strip.action = self.line_strip.ADD
+        self.line_strip.header.frame_id = 'map'
+        self.line_strip.header.stamp = rospy.Time.now()
+        self.line_strip.ns = 'marker_test_%d'
+        self.line_strip.id = 0
+        self.line_strip.type = self.line_strip.LINE_STRIP
+        self.line_strip.pose.orientation.w = 1
+        self.line_strip.scale.x = 0.05
+        self.line_strip.scale.y = 0.05
+        self.line_strip.color.r = 1
+        self.line_strip.color.a = 1
 
-        self.pub_poses = rospy.Publisher('vector_poses', PoseArray) # Publishers
-        self.marker_pub = rospy.Publisher('marker_test', Marker)
+        # self.pub_poses = rospy.Publisher('vector_poses', PoseArray) # Publishers
+        self.marker_pub = rospy.Publisher('poly_curve', Marker)
 
         self.CameraInfo_sub = rospy.Subscriber("/kinect2_camera/rgb/camera_info", CameraInfo, self.imagecaminfoCallback)
         self.img_sub = rospy.Subscriber("/kinect2_camera/rgb/image_color_rect", Image, self.imageCallback)
@@ -90,25 +102,6 @@ class lane_finder():
         except CvBridgeError as e:
           print(e)
         self.img_receive = True
-
-    def make_marker(self, r, g, b, a):
-        # make a visualization marker array for the occupancy grid
-        m = Marker()
-        m.action = Marker.ADD
-        m.header.frame_id = 'map'
-        m.header.stamp = rospy.Time.now()
-        m.ns = 'marker_test_%d'
-        m.id = 0
-        m.type = Marker.LINE_STRIP
-        m.pose.orientation.w = 1
-        m.scale.x = 0.1
-        m.scale.y = 0.1
-        m.scale.z = 0.2
-        m.color.r = r
-        m.color.g = g
-        m.color.b = b
-        m.color.a = a
-        return m
 
     def perspective_warp(self, img, dst_size, src, dst): # Choose the four vertices
 
@@ -379,54 +372,23 @@ class lane_finder():
          poses.header.frame_id = "map"
          poses.header.stamp = rospy.Time.now()
 
-         #poly_pts = MarkerArray()
-         #line_strip = self.make_marker(r=1, g=0.5, b=0.2, a=0.3)
-
-         line_strip = Marker()
-         line_strip.action = Marker.ADD
-         line_strip.header.frame_id = 'map'
-         line_strip.header.stamp = rospy.Time.now()
-         line_strip.ns = 'marker_test_%d'
-         line_strip.id = 0
-         line_strip.type = Marker.LINE_STRIP
-         line_strip.pose.orientation.w = 1
-         line_strip.scale.x = 0.1
-         line_strip.scale.y = 0.1
-         line_strip.scale.z = 0.2
-         line_strip.color.r = r
-         line_strip.color.g = g
-         line_strip.color.b = b
-         line_strip.color.a = a
          for pt in range(len(centerLine)):
            p = Point()
            p.x = centerLine[pt][0]
            p.y = centerLine[pt][1]
-           line_strip.points.push_back(p)
-
-         self.marker_pub.publish(line_strip)
-
-         for pt in range(self.Total_Points):
-
-           # Line segment points
-           seg_x = int((centerLine[0][0]*(1-(float(pt)/self.Total_Points))) + (centerLine[len(centerLine)-1][0]*(float(pt)/self.Total_Points)))
-           seg_y = int((centerLine[0][1]*(1-(float(pt)/self.Total_Points))) + (centerLine[len(centerLine)-1][1]*(float(pt)/self.Total_Points)))
 
            # Calcuate 3D World Point from 2D Image Point
-           p_c = np.array([seg_x+self.roi[0], seg_y+self.roi[1], 1])
+           p_c = np.array([p.x+self.roi[0], p.y+self.roi[1], 1])
            x_c = np.linalg.inv(self.K).dot(p_c) # Applying Intrinsic Parameters
            x_c_norm = LA.norm(x_c, axis=0)
            x_c = x_c/x_c_norm # Normalize the vector
            x_p = self.camera2world(x_c, t_c, R_c)
-           self.Line_Pts.append([x_p[0],x_p[1]])
+           pf = Point()
+           pf.x = x_p[0]
+           pf.y = x_p[1]
+           self.line_strip.points.append(pf)
 
-           if pt>0:
-              position = Point(self.Line_Pts[pt][0], self.Line_Pts[pt][1], 0) # Position
-              yaw = math.atan2(self.Line_Pts[pt-1][1]-self.Line_Pts[pt][1],self.Line_Pts[pt-1][0]-self.Line_Pts[pt][0])
-              quaternion_c = tf.transformations.quaternion_from_euler(0, 0, self.normalizeangle(yaw))
-              orientation = np.quaternion(quaternion_c[3], quaternion_c[0], quaternion_c[1], quaternion_c[2])
-              poses.poses.append(Pose(position, orientation))
-
-         return poses
+         self.marker_pub.publish(self.line_strip)
 
 if __name__ == '__main__':
    try:
@@ -448,23 +410,20 @@ if __name__ == '__main__':
           t_c = np.array([[trans[0]], [trans[1]], [trans[2]]])
           R_c = np.quaternion(rot[3], rot[0], rot[1], rot[2]) # Format: (w,x,y,z)
 
-          poses = lf.publish_vector(centerLine, t_c, R_c)
+          # poses = lf.publish_vector(centerLine, t_c, R_c)
+          lf.publish_vector(centerLine, t_c, R_c)
 
-          # Publish the vector of poses
-          lf.pub_poses.publish(poses)
-
-          # # visualization
-          # cv2.startWindowThread()
-          # cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
-          # cv2.resizeWindow('preview', 800,800)
-          # cv2.imshow("preview", output) #lf.image
-          # cv2.waitKey(1)
+          # visualization
+          cv2.startWindowThread()
+          cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+          cv2.resizeWindow('preview', 800, 800)
+          cv2.imshow("preview", output) #lf.image
+          cv2.waitKey(1)
           # filename = "/home/saga/ICRA_2020/preview_%d.jpg"%d
           # cv2.imwrite(filename, output)
           # d+=1
 
           lf.img_receive = False
-          rospy.sleep(0.5)  # sleep for one second
 
    except rospy.ROSInterruptException:
      cv2.destroyAllWindows() # Closes all the frames
