@@ -43,8 +43,7 @@ init_cmd: |
   # the topomap to be used
   export_default TMAP frogn_fields
   # the gridmap to be used (key in mongodb)
-  export_default MAP "$(rospack find rasberry_agricultural_costmaps)/maps/frogn_fields.yaml"
-  export_default NOGOMAP "$(rospack find rasberry_agricultural_costmaps)/maps/frogn_fields.yaml"
+  export_default MAP "$(rospack find auto_nav)/maps/white_image.yaml"
   # figure out the robot number from the hostname, assuming it is like `thorvald-XXX`
   export_default ROBOT_NO `hostname | cut -f2 -d"-"`
   # set the robot type
@@ -64,6 +63,7 @@ init_cmd: |
   export_default USE_FEATURE_DETECTOR false
   export_default LOC_EDGE_RECONF "norway"
   export_default ENVIRONMENT "open_fields"
+  export_default MODEL_EXTRAS "$(rospack find auto_nav)/urdf/sensors.xacro"
 windows:
 - name: init
   panes:
@@ -73,13 +73,13 @@ windows:
   - sleep 1; if [ -r "$BASE_CONFIG_DIR/robots/$ROBOT_NAME.yaml" ]; then rosparam load "$BASE_CONFIG_DIR/robots/$ROBOT_NAME.yaml"; fi
 - name: robot
   panes:
-  - sleep 1; roslaunch auto_nav auto_nav.launch simple_sim:=$USE_SIM with_teleoperation:=true use_gui:=$USE_GUI enable_odom_tf:=true
+  - sleep 1; roslaunch auto_nav auto_nav.launch model_extras:=$MODEL_EXTRAS simple_sim:=$USE_SIM with_teleoperation:=true use_gui:=$USE_GUI enable_odom_tf:=true
   #- sleep 1; if ! $USE_SIM; then roslaunch auto_nav xsens_driver.launch; fi
-  - sleep 1; rosrun map_server map_server $HOME/planner_ws/src/auto_nav/maps/white_image.yaml
-- name: localisation
-  panes:
-  - sleep 2; roslaunch auto_nav RTK_setup.launch publish_tf:="$EKF_PUBLISH_TF"
-  - sleep 2; rosrun robot_pose_publisher robot_pose_publisher
+  #- sleep 1; rosrun map_server map_server $HOME/planner_ws/src/auto_nav/maps/white_image.yaml
+#- name: localisation
+  #panes:
+  #- sleep 2; roslaunch auto_nav RTK_setup.launch publish_tf:="$EKF_PUBLISH_TF"
+  #- sleep 2; rosrun robot_pose_publisher robot_pose_publisher
 - name: agri_costmaps
   panes:
   - sleep 3; roslaunch auto_nav waypoint_nav.launch environment:=$ENVIRONMENT use_waypoint_nav:=$USE_WAYPOINT_NAV

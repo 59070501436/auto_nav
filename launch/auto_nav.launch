@@ -18,13 +18,14 @@
   <arg name="tf_prefix" default="" />
   <arg name="robot_model" default="$(find auto_nav)/config/robot.yaml"/>
   <arg name="model_extras" default="$(find auto_nav)/urdf/sensors_sim.xacro"/>
+  <arg name="enable_odom_tf" default="" />
 
   <!-- Set the maps, joystick, gui -->
   <arg name="with_gui" default="False"/>
   <arg name="db_path" default="$(env HOME)/mongodb"/>
   <arg name="topo_map" default="track" />
   <arg name="joy_dev" default="/dev/input/js0" />
-  <param name="use_sim_time" value="false" />
+  <!--param name="use_sim_time" default="false" /-->
   <arg name="map_file" default="$(find auto_nav)/maps/white_image.yaml"/>
   <arg name="world_name" value="$(find auto_nav)/worlds/tracks_world.world"/>
   <rosparam command="load" file="$(find auto_nav)/config/waypoints_topo.yaml" />
@@ -45,6 +46,7 @@
     <arg name="tf_prefix" value="$(arg tf_prefix)" />
     <arg name="robot_model" value="$(arg robot_model)"/>
     <arg name="model_extras" value="$(arg model_extras)"/>
+    <arg name="enable_odom_tf" value="$(arg enable_odom_tf)" />
 
     <arg name="with_gui" value="$(arg with_gui)" if="$(arg simple_sim)" />
     <arg name="joy_dev" value="$(arg joy_dev)" />
