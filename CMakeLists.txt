@@ -180,6 +180,7 @@ install(PROGRAMS
   scripts/lane_detector.py
   scripts/lane_detector_image.py
   scripts/lane_detector_video.py
+  scripts/lane_detector_skp.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
