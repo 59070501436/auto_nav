@@ -170,7 +170,7 @@ add_dependencies(waypoint_saver ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXP
 ## Specify libraries to link a library or executable target against
 #target_link_libraries(shadow_removal ${catkin_LIBRARIES})
 target_link_libraries(waypoint_saver ${catkin_LIBRARIES} ${OpenCV_LIBS} ${PYTHON_LIBRARIES})
-#target_link_libraries(waypoints_nav ${catkin_LIBRARIES} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} yaml-cpp) 
+#target_link_libraries(waypoints_nav ${catkin_LIBRARIES} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} yaml-cpp)
 
 #############
 ## Install ##
@@ -185,6 +185,8 @@ install(PROGRAMS
   scripts/lane_detector.py
   scripts/lane_detector_image.py
   scripts/lane_detector_video.py
+  scripts/lane_detector_skp.py
+  scripts/test.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

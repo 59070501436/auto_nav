@@ -35,7 +35,6 @@ class lane_finder():
     '''
 
     def __init__(self, image, base_size=.2):
-        #super(lane_finder, self).__init__()
     #### Hyperparameters ####
         self.image = image
         self.vis = image # used for visualization
