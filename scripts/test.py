@@ -4,8 +4,8 @@ from sklearn.preprocessing import normalize
 import cv2
 
 print('loading images...')
-imgL = cv2.imread("/home/vignesh/ICRA_2020/im0.png")# downscale images for faster processing
-imgR = cv2.imread("/home/vignesh/ICRA_2020/im1.png")
+imgL = cv2.imread("/home/vignesh/ICRA_2020/Infrared_1_1.png")# downscale images for faster processing
+imgR = cv2.imread("/home/vignesh/ICRA_2020/Infrared_2_1.png")
 
 # SGBM Parameters -----------------
 window_size = 3                     # wsize default 3; 5; 7 for SGBM reduced size image; 15 for SGBM full size image (1300px and above); 5 Works nicely
