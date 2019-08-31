@@ -7,6 +7,7 @@ import tf
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide" # Hides the pygame version, welcome msg
 from os.path import expanduser
+import matplotlib.pyplot as plt
 
 class lane_finder_SVM():
     '''
@@ -36,8 +37,8 @@ class lane_finder_SVM():
 
     def GenerateOverheadView(self, image):
 
-        src=np.float32([(0.05,0), (1,0), (0.05,1), (1,1)])
-        dst=np.float32([(0,0), (1,0), (0,1), (1,1)])
+        src=np.float32([(0,0), (1,0), (0,1), (1,1)])
+        dst=np.float32([(0,0), (1,0), (0.2,1), (0.8,1)])
 
         img_size = np.float32([(image.shape[1],image.shape[0])])
         src = src* np.float32(img_size)
@@ -61,21 +62,39 @@ class lane_finder_SVM():
        #  print warp_mat
        #  warp_dst = cv2.warpAffine(src, warp_mat, (src.shape[1], src.shape[0]))
 
-        # Rotating the image after Warp
-        center = (src.shape[1]//2, src.shape[0]//2)
-        angle = 50
-        scale = 0
-        rot_mat = cv2.getRotationMatrix2D( center, angle, scale )
-        warp_rotate_dst = cv2.warpAffine(src, rot_mat, (src.shape[1], src.shape[0]))
+        # # Rotating the image after Warp
+        # center = (src.shape[1]//2, src.shape[0]//2)
+        # angle = 50
+        # scale = 0
+        # rot_mat = cv2.getRotationMatrix2D( center, angle, scale )
+        # warp_rotate_dst = cv2.warpAffine(src, rot_mat, (src.shape[1], src.shape[0]))
+
+        rows,cols = src.shape
+
+        M = cv2.getRotationMatrix2D((cols/2,rows/2),5,1)
+        dst = cv2.warpAffine(src,M,(cols,rows))
 
         # Sum up the columns
+        img_col_sum = np.sum(dst, axis=0)
+        x_coordinates = np.arange(cols)
+        #var_arr = np.var(img_col_sum)
+        #print var_arr
+
         # Calculate the variance
+        #fig, ax = plt.subplots()
+        plt.imshow(dst)
+        #ax.plot(x_coordinates, img_col_sum)  #[img_col_sum])
+        #ax.plot(x_coordinates, img_col_sum, '--', linewidth=5, color='firebrick')
+
+        plt.plot(x_coordinates, img_col_sum, '--', linewidth=5, color='firebrick')
+        plt.xlabel('x')
+        plt.ylabel('s(x)')
+        plt.show()
 
         # Find the angle with max variance
-
         heading_angle = 0
 
-        return src, heading_angle
+        return dst, heading_angle
 if __name__ == '__main__':
 
   try:
@@ -98,10 +117,10 @@ if __name__ == '__main__':
 
      skewed_img, skew_angle = lf.EstimateRowDirection(overhead_img)
 
-     cv2.startWindowThread()
-     cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
-     cv2.resizeWindow('preview', 800,800)
-     cv2.imshow('preview', skewed_img)
+     # cv2.startWindowThread()
+     # cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+     # cv2.resizeWindow('preview', 800,800)
+     # cv2.imshow('preview', skewed_img)
      #cv2.imwrite("/home/saga/skewed_img.png", skewed_img)
 
      # r_ms, g_ms, b_ms = lf.medianRGB(Roi_sky)
