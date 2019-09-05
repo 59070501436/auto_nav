@@ -22,7 +22,7 @@ class lane_finder_SVM():
         self.ksize = (24, 24)
         self.sigma = 5
         self.theta = np.pi/4 #np.pi/4
-        self.lambda1 = 3
+        self.lambda1 = 4
         self.gamma = 0.25
         self.psi = 0
         self.ktype = cv2.CV_32F
@@ -31,7 +31,8 @@ class lane_finder_SVM():
     # Our main driver function to return the segmentation of the input image.
     def runGabor(self):
         filtered_img = cv2.filter2D(self.image, cv2.CV_8UC3, self.g_kernel)
-        cv2.imwrite("/home/saga/filteredImages1.png",filtered_img)
+        Filelocation = expanduser("~/filteredImages1.png")
+        cv2.imwrite(Filelocation, filtered_img)
 
 if __name__ == '__main__':
 
