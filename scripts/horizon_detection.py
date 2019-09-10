@@ -38,8 +38,8 @@ class lane_finder_SVM():
     def GenerateOverheadView(self, image):
 
         src=np.float32([(0,0), (1,0), (0,1), (1,1)])
-        #dst=np.float32([(0,0), (1,0), (0.2,1), (0.8,1)]) # Suiting to QUT work
-        dst=np.float32([(0,0), (1,0), (0,1), (1,1)])
+        dst=np.float32([(0,0), (1,0), (0.3,1), (0.7,1)]) # Suiting to QUT work
+        #dst=np.float32([(0,0), (1,0), (0,1), (1,1)])
 
         img_size = np.float32([(image.shape[1],image.shape[0])])
         src = src* np.float32(img_size)
@@ -103,14 +103,16 @@ if __name__ == '__main__':
    rospy.init_node('horizon_detection', anonymous=True)
 
    # Load an color image in grayscale
-   home = expanduser("~/Third_Paper/SKP_post_harvest_dataset/Photos/SKP_6/left1000.jpg")
+   #home = expanduser("~/Third_Paper/SKP_post_harvest_dataset/Photos/SKP_6/left1000.jpg")
+   #home = expanduser("~/Third_Paper/Frogn_Fields/frogn_fields_006.jpg") # Old Frogn Case
+   home = expanduser("~/Third_Paper/Frogn_Fields/Frogn_005/frogn_10000.png")
    rgb_img = cv2.imread(home)
 
    # Getting ROI
    iheight, iwidth = rgb_img.shape[:2]
-   Roi_s = rgb_img[0:int(iheight*0.3),0:iwidth]
-   Roi_g = rgb_img[int(iheight*(1-0.3)):iheight,0:iwidth]
-   Roi_m = rgb_img[int(iheight*0.3):iheight,0:iwidth]
+   Roi_s = rgb_img[0:int(iheight*0.4),0:iwidth]
+   Roi_g = rgb_img[int(iheight*(1-0.4)):iheight,0:iwidth]
+   Roi_m = rgb_img[int(iheight*0.4):iheight,0:iwidth]
 
    while not rospy.is_shutdown():
      lf = lane_finder_SVM(rgb_img)
@@ -119,11 +121,11 @@ if __name__ == '__main__':
 
      # skewed_img, skew_angle = lf.EstimateRowDirection(overhead_img)
 
-     # cv2.startWindowThread()
-     # cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
-     # cv2.resizeWindow('preview', 800,800)
-     # cv2.imshow('preview', skewed_img)
-     cv2.imwrite("/home/saga/overhead_img9.png", overhead_img)
+     cv2.startWindowThread()
+     cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+     cv2.resizeWindow('preview', 800,800)
+     cv2.imshow('preview', overhead_img)
+     cv2.imwrite("/home/saga/overhead_img13.png", overhead_img)
 
      # r_ms, g_ms, b_ms = lf.medianRGB(Roi_sky)
      # r_mg, g_mg, b_mg = lf.medianRGB(Roi_ground)
