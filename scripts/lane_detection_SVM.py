@@ -72,7 +72,7 @@ class lane_finder_SVM():
         gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
         features = feature.local_binary_pattern(gray, numPoints, radius, method="default") # method="uniform")
 
-        return features 
+        return features
 
 if __name__ == '__main__':
 
@@ -80,9 +80,9 @@ if __name__ == '__main__':
    rospy.init_node('horizon_detection', anonymous=True)
 
    # Load an color image in grayscale
-   home = expanduser("~/Third_Paper/Dataset_skp/overhead_img13.png") #SKP_post_harvest_dataset/Photos/SKP_6/left0000.jpg")
-   # home = expanduser("~/Third_Paper/Frogn_Fields/frogn_fields_006.jpg") # Old Frogn Case
-   # home = expanduser("~/Third_Paper/Frogn_Fields/Frogn_005/frogn_10000.png")
+   home = expanduser("~/Third_Paper/Datasets/SKP/overhead_img13.png") #SKP_post_harvest_dataset/Photos/SKP_6/left0000.jpg")
+   # home = expanduser("~/Third_Paper/Datasets/Frogn_Fields/frogn_fields_006.jpg") # Old Frogn Case
+   # home = expanduser("~/Third_Paper/Datasets/Frogn_Fields/Frogn_005/frogn_10000.png")
 
    rgb_img = cv2.imread(home)
    #rgb_img1 = cv2.imread(home1)
