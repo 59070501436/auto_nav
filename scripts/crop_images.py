@@ -5,24 +5,27 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide" # Hides the pygame version, we
 from os.path import expanduser
 import glob
 from PIL import Image
+import os.path as osp
 
-roi_x = 120
-roi_y = 208
+roi_x = 208 #120
+roi_y = 120 #208
 
-for d in range(5151): #5151
-        home = expanduser("~/Third_Paper/Datasets/Frogn_Fields/Frogn_005/frogn_1%04d.png"%d)
-        print(home)
+input_dir = expanduser("~/Third_Paper/Frogn_Dataset/annotations_prepped_test/") #/frogn_2%04d.jpg"%d
+output_dir = expanduser("~/Third_Paper/Frogn_Dataset_32x/annotations_prepped_test/")
 
-        img = cv2.imread(home)
-        # cv2.imshow('preview', img)
-        # k = cv2.waitKey(1) & 0xFF
-        # if k == 27:
-        #    break
+for label_file in glob.glob(osp.join(input_dir, '*.png')):
+        print(label_file)
+        with open(label_file) as f:
+            base = osp.splitext(osp.basename(label_file))[0]
+            img = cv2.imread(label_file)
+            # cv2.imshow('preview', img)
+            # k = cv2.waitKey(1) & 0xFF
+            # if k == 27:
+            #    break
 
-        # Getting ROI
-        iheight, iwidth = img.shape[:2]
-        Roi = img[0:iheight-roi_y,0:iwidth-roi_x]
+            # Getting ROI
+            iheight, iwidth = img.shape[:2]
+            Roi = img[0:iheight-40,0:iwidth]
 
-        # Store the Cropped Images
-        Filelocation = expanduser("~/Third_Paper/Datasets/Frogn_Fields/Frogn_005_cropped/frogn_1%04d.png"%d)
-        cv2.imwrite(Filelocation, Roi)
+            # Store the Cropped Images
+            cv2.imwrite(output_dir+base+'.png', Roi)
