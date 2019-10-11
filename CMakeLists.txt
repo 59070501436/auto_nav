@@ -154,7 +154,10 @@ add_library(agri_costmap_layer_v2 src/agri_costmap_layer_v2.cpp)
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(waypoint_saver src/waypoint_saver.cpp)
 #add_executable(waypoints_nav src/waypoints_nav.cpp)
+<<<<<<< HEAD
 add_executable(lane_control src/lane_control.cpp)
+=======
+>>>>>>> 4409934f29277863b061680c019a37b31bc4677b
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -164,6 +167,7 @@ add_executable(lane_control src/lane_control.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
+<<<<<<< HEAD
 add_dependencies(waypoint_saver ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 #add_dependencies(waypoints_nav ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(lane_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -172,6 +176,16 @@ add_dependencies(lane_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPOR
 target_link_libraries(waypoint_saver ${catkin_LIBRARIES} ${OpenCV_LIBS} ${PYTHON_LIBRARIES})
 #target_link_libraries(waypoints_nav ${catkin_LIBRARIES} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} yaml-cpp)
 target_link_libraries(lane_control ${catkin_LIBRARIES} ${OpenCV_LIBS} ${PYTHON_LIBRARIES})
+=======
+#add_dependencies(shadow_removal ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(waypoint_saver ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(waypoints_nav ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+## Specify libraries to link a library or executable target against
+#target_link_libraries(shadow_removal ${catkin_LIBRARIES})
+target_link_libraries(waypoint_saver ${catkin_LIBRARIES} ${OpenCV_LIBS} ${PYTHON_LIBRARIES})
+#target_link_libraries(waypoints_nav ${catkin_LIBRARIES} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} yaml-cpp)
+>>>>>>> 4409934f29277863b061680c019a37b31bc4677b
 
 #############
 ## Install ##
@@ -183,6 +197,7 @@ target_link_libraries(lane_control ${catkin_LIBRARIES} ${OpenCV_LIBS} ${PYTHON_L
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 install(PROGRAMS
+<<<<<<< HEAD
   scripts/segnet_lane_detection.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
@@ -191,6 +206,15 @@ install(PROGRAMS
 #scripts/lane_detector_video.py
 #scripts/lane_detector_skp.py
 #scripts/test.py
+=======
+  scripts/lane_detector.py
+  scripts/lane_detector_image.py
+  scripts/lane_detector_video.py
+  scripts/lane_detector_skp.py
+  scripts/test.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+>>>>>>> 4409934f29277863b061680c019a37b31bc4677b
 
 ## Mark executables and/or libraries for installation
 # install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_node
